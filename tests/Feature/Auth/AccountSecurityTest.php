@@ -77,7 +77,19 @@ it('déconnecte un utilisateur désactivé pendant sa session', function () {
     $this->assertGuest();
 });
 
-it('oblige l\'administrateur sans double authentification à l\'activer', function () {
+it('laisse la double authentification facultative par défaut, même pour l\'administrateur', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+    $admin = User::factory()->withRoles(Role::Admin)->create();
+
+    expect(config('lexcabinet.admin_two_factor'))->toBeFalse();
+    attemptLogin($admin->email, 'password')->assertRedirect(route('dashboard', absolute: false));
+    $this->assertAuthenticatedAs($admin);
+    $this->get(route('dashboard'))->assertOk();
+    $this->get(route('two-factor.setup'))->assertOk()->assertSee('Facultatif');
+});
+
+it('l\'impose à l\'administrateur si ADMIN_TWO_FACTOR=true', function () {
+    config(['lexcabinet.admin_two_factor' => true]);
     $this->seed(RolesAndPermissionsSeeder::class);
     $admin = User::factory()->withRoles(Role::Admin)->create();
 
@@ -118,11 +130,40 @@ it('demande le code TOTP à la connexion d\'un administrateur', function () {
     $this->assertAuthenticatedAs($admin);
 });
 
-it('n\'exige pas de code des utilisateurs non administrateurs', function () {
+it('n\'exige pas de code d\'un utilisateur qui ne l\'a pas activée', function () {
     $user = userWithRoles(Role::Accountant);
 
     attemptLogin($user->email, 'password')->assertRedirect(route('dashboard', absolute: false));
     $this->assertAuthenticatedAs($user);
+});
+
+it('permet à tout utilisateur de l\'activer, puis demande son code à la connexion', function () {
+    $user = userWithRoles(Role::Secretary);
+    $this->actingAs($user);
+
+    $component = Livewire::test(TwoFactorSetup::class);
+    $component->set('code', app(TwoFactorService::class)->currentCode(session('two_factor.pending_secret')))->call('confirm')->assertHasNoErrors();
+    auth()->logout();
+
+    attemptLogin($user->email, 'password')->assertRedirect(route('two-factor.challenge'));
+    $this->assertGuest();
+});
+
+it('permet de la désactiver avec un code valide, sauf si elle est imposée', function () {
+    $admin = userWithRoles(Role::Admin);   // double authentification activée
+    $secret = $admin->two_factor_secret;
+    $this->actingAs($admin);
+
+    Livewire::test(TwoFactorSetup::class)->set('code', '000000')->call('disable')->assertHasErrors('code');
+    expect($admin->fresh()->hasTwoFactorEnabled())->toBeTrue();
+
+    config(['lexcabinet.admin_two_factor' => true]);
+    Livewire::test(TwoFactorSetup::class)->set('code', app(TwoFactorService::class)->currentCode($secret))->call('disable')->assertForbidden();
+
+    config(['lexcabinet.admin_two_factor' => false]);
+    Livewire::test(TwoFactorSetup::class)->set('code', app(TwoFactorService::class)->currentCode($secret))->call('disable')->assertHasNoErrors();
+    expect($admin->fresh()->hasTwoFactorEnabled())->toBeFalse()
+        ->and(AuditActivity::query()->where('description', 'Double authentification désactivée')->where('causer_id', $admin->id)->exists())->toBeTrue();
 });
 
 it('ne propose pas d\'inscription publique', function () {

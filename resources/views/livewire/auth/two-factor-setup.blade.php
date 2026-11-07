@@ -9,11 +9,27 @@
                 de votre application d'authentification vous sera demandé.
             </p>
             <p class="mt-2 text-sm text-slate-500">Téléphone perdu ou changé ? Demandez à un administrateur de la réinitialiser.</p>
+
+            @unless ($required)
+                <form wire:submit="disable" class="mt-5 flex flex-wrap items-start gap-2 border-t border-slate-200 pt-4">
+                    <div>
+                        <label for="off-code" class="lx-label">Pour la désactiver, saisissez le code actuel</label>
+                        <input id="off-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" wire:model="code" class="lx-input w-40 font-mono tracking-widest">
+                        @error('code') <p class="lx-error">{{ $message }}</p> @enderror
+                    </div>
+                    <button type="submit" class="lx-btn mt-6 text-red-700" wire:confirm="Désactiver la double authentification ?">Désactiver</button>
+                </form>
+            @endunless
         @else
             @if ($required)
                 <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">
                     En tant qu'administrateur, vous devez activer la double authentification avant d'accéder à l'application.
                 </div>
+            @else
+                <p class="mb-4 text-sm text-slate-600">
+                    Facultatif : avec la double authentification, un code de votre téléphone vous sera demandé à chaque connexion,
+                    en plus du mot de passe. Recommandé pour les comptes qui ont accès aux dossiers et à la caisse.
+                </p>
             @endif
 
             <ol class="list-decimal space-y-3 pl-5 text-sm text-slate-700">

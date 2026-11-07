@@ -32,6 +32,6 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
-        <env name="ADMIN_TWO_FACTOR" value="true"/>
+        <env name="ADMIN_TWO_FACTOR" value="false"/>
     </php>
 </phpunit>

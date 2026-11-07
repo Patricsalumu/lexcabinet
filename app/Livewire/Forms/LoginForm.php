@@ -45,7 +45,8 @@ class LoginForm extends Form
 
         RateLimiter::clear($this->throttleKey());
 
-        if ($user->requiresTwoFactor() && $user->hasTwoFactorEnabled()) {
+        // Tout utilisateur qui a activé la double authentification doit saisir son code.
+        if ($user->hasTwoFactorEnabled()) {
             session()->put(TwoFactorChallenge::SESSION_USER, $user->id);
             session()->put(TwoFactorChallenge::SESSION_REMEMBER, $this->remember);
 

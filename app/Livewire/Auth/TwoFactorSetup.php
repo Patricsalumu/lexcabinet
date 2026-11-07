@@ -52,6 +52,29 @@ class TwoFactorSetup extends Component
         $this->redirectRoute('dashboard', navigate: true);
     }
 
+    /**
+     * Désactivation par l'utilisateur, sur présentation d'un code valide.
+     * Refusée si la double authentification est imposée (ADMIN_TWO_FACTOR=true pour un administrateur).
+     */
+    public function disable(TwoFactorService $twoFactor): void
+    {
+        $user = auth()->user();
+        abort_if(! $user->hasTwoFactorEnabled() || $user->requiresTwoFactor(), 403);
+
+        $this->validate(['code' => ['required', 'string']]);
+        if (! $twoFactor->verify($user->two_factor_secret, $this->code)) {
+            $this->addError('code', trans('auth.two_factor_invalid'));
+
+            return;
+        }
+
+        $user->forceFill(['two_factor_secret' => null, 'two_factor_confirmed_at' => null])->saveQuietly();
+        activity('auth')->causedBy($user)->performedOn($user)->log('Double authentification désactivée');
+
+        session()->flash('status', 'Double authentification désactivée.');
+        $this->redirectRoute('two-factor.setup', navigate: true);
+    }
+
     public function render(TwoFactorService $twoFactor, SettingsService $settings): View
     {
         $secret = session(self::SESSION_SECRET);
