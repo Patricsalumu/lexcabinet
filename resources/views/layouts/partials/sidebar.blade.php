@@ -1,0 +1,56 @@
+@php
+    use App\Enums\Module;
+    $settings = app(\App\Services\SettingsService::class);
+    $firmName = $settings->get('firm.name');
+    $hasLogo = $settings->get('firm.logo_path') !== null;
+    $user = auth()->user();
+@endphp
+
+<nav class="flex flex-col gap-5 border-slate-200 bg-white px-3 py-5 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-r"
+     aria-label="Modules">
+    <div class="flex items-center gap-3 px-2">
+        @if ($hasLogo)
+            <img src="{{ route('firm.logo') }}" alt="" class="h-9 w-9 rounded object-contain">
+        @endif
+        <div>
+            <a href="{{ route('dashboard') }}" wire:navigate class="font-display text-lg font-semibold text-slate-900">LexCabinet</a>
+            <p class="text-xs text-slate-500">{{ $firmName }}</p>
+        </div>
+    </div>
+
+    <div class="-mx-3 flex gap-1 overflow-x-auto px-3 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
+        @foreach (Module::cases() as $module)
+            @can('view-module', $module->value)
+                @php
+                    $url = match ($module) {
+                        Module::Dashboard => route('dashboard'),
+                        Module::Settings => route('settings.index'),
+                        default => route('module', $module->value),
+                    };
+                    $active = match ($module) {
+                        Module::Dashboard => request()->routeIs('dashboard'),
+                        Module::Settings => request()->routeIs('settings.*'),
+                        default => request()->routeIs('module') && request()->route('module') === $module->value,
+                    };
+                @endphp
+                <a href="{{ $url }}" wire:navigate
+                   @class([
+                       'whitespace-nowrap rounded-md px-3 py-2 text-sm',
+                       'bg-indigo-50 font-semibold text-slate-900' => $active,
+                       'text-slate-600 hover:bg-slate-100 hover:text-slate-900' => ! $active,
+                   ])
+                   @if ($active) aria-current="page" @endif>{{ $module->label() }}</a>
+            @endcan
+        @endforeach
+    </div>
+
+    <div class="border-t border-slate-200 px-2 pt-4 text-sm lg:mt-auto">
+        <p class="font-medium text-slate-900">{{ $user->name }}</p>
+        <p class="text-xs text-slate-500">{{ implode(' · ', $user->roleLabels()) }}</p>
+        <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 lg:flex-col">
+            <a href="{{ route('profile') }}" wire:navigate class="text-slate-600 hover:text-slate-900">Mon profil</a>
+            <a href="{{ route('two-factor.setup') }}" wire:navigate class="text-slate-600 hover:text-slate-900">Double authentification</a>
+            <livewire:layout.logout-button />
+        </div>
+    </div>
+</nav>

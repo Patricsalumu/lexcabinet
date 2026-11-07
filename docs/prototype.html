@@ -1,0 +1,1007 @@
+<title>LexCabinet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout : barre latérale de navigation + espace de travail ; sur téléphone, onglets défilants en haut. Encre bleue de greffe sur papier froid. */
+:root{
+  --paper:#f3f4f7; --surface:#ffffff; --sunk:#e9ebf1; --ink:#161a2b; --muted:#585f77; --line:#d9dce6;
+  --accent:#2c3d8a; --accent-ink:#ffffff; --accent-soft:#e3e7f6;
+  --good:#1c7449; --good-soft:#dff1e7; --warn:#935605; --warn-soft:#fbeed6; --crit:#ad2238; --crit-soft:#f9e1e5;
+  --sheet:#ffffff; --sheet-ink:#1b1d26; --sheet-line:#d6d8de;
+  --f-display:'Newsreader', Georgia, 'Times New Roman', serif;
+  --f-body:'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#11131b; --surface:#191c27; --sunk:#222634; --ink:#e7e9f1; --muted:#9ba2b8; --line:#2c3142;
+  --accent:#9aaaf0; --accent-ink:#11131b; --accent-soft:#252c4d;
+  --good:#5cc994; --good-soft:#173628; --warn:#e7a948; --warn-soft:#3a2b12; --crit:#f17b8d; --crit-soft:#3e1c24;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#11131b; --surface:#191c27; --sunk:#222634; --ink:#e7e9f1; --muted:#9ba2b8; --line:#2c3142;
+  --accent:#9aaaf0; --accent-ink:#11131b; --accent-soft:#252c4d;
+  --good:#5cc994; --good-soft:#173628; --warn:#e7a948; --warn-soft:#3a2b12; --crit:#f17b8d; --crit-soft:#3e1c24;
+  color-scheme:dark }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;text-wrap:balance;margin:0;letter-spacing:-.01em}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.num{text-align:right;white-space:nowrap}
+.muted{color:var(--muted)}
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100%}
+.nav{background:var(--surface);border-right:1px solid var(--line);padding:20px 12px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{padding:0 8px}
+.brand b{font-family:var(--f-display);font-size:22px;font-weight:600;display:block;letter-spacing:-.02em}
+.brand span{font-size:12px;color:var(--muted)}
+.navlist{display:flex;flex-direction:column;gap:2px}
+.navlist button{all:unset;cursor:pointer;padding:8px 10px;border-radius:var(--r);color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.navlist button:hover{background:var(--sunk);color:var(--ink)}
+.navlist button[aria-current="page"]{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.navlist button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.badge{font-family:var(--f-mono);font-size:11px;background:var(--crit);color:var(--surface);border-radius:10px;padding:0 6px;font-weight:500}
+.who{margin-top:auto;padding:12px 8px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.who label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.demo{font-size:11.5px;color:var(--muted)}
+main{padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));min-width:0}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.head h1{font-size:30px;line-height:1.15}
+.head p{margin:4px 0 0;color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:7px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.btn.ghost{background:transparent}
+.btn.sm{padding:3px 9px;font-size:12.5px}
+.btn.danger{color:var(--crit)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;min-width:0}
+.panel>h2{font-size:18px;padding:14px 16px 0}
+.panel .ph{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px 16px 0;flex-wrap:wrap}
+.panel .ph h2{font-size:18px}
+.pbody{padding:12px 16px 16px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.kpi small{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.kpi strong{font-family:var(--f-mono);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums}
+.kpi span{font-size:12.5px;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:500;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.mono{white-space:nowrap}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--sunk)}
+tfoot td{font-weight:600;border-top:2px solid var(--line)}
+.chip{display:inline-block;font-size:12px;padding:1px 8px;border-radius:10px;background:var(--sunk);color:var(--ink);white-space:nowrap}
+.chip.good{background:var(--good-soft);color:var(--good)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.crit{background:var(--crit-soft);color:var(--crit)}
+.chip.acc{background:var(--accent-soft);color:var(--ink)}
+.list{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:start}
+.row:last-child{border-bottom:0}
+.row .t{font-family:var(--f-mono);font-size:13px}
+.row .main b{font-weight:600}
+.row .sub{font-size:12.5px;color:var(--muted)}
+.empty{color:var(--muted);padding:10px 0;font-size:13px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.toolbar .sp{flex:1}
+input[type=text],input[type=email],input[type=tel],input[type=number],input[type=date],input[type=time],input[type=search],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:7px 9px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:120px;font-family:var(--f-mono);font-size:12.5px;line-height:1.55}
+.toolbar select,.toolbar input{width:auto}
+.day{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}
+.day:last-child{border-bottom:0}
+.day h3{font-family:var(--f-body);font-size:13.5px;font-weight:600;text-transform:capitalize}
+.day h3 small{display:block;font-weight:400;color:var(--muted);text-transform:none}
+.day.today h3{color:var(--accent)}
+.appt{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line);align-items:start}
+.appt:last-child{border-bottom:0}
+.appt .ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.appt select{width:auto;padding:3px 6px;font-size:12.5px}
+.appt.cancel .main{text-decoration:line-through;color:var(--muted)}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+.form .full{grid-column:1/-1}
+.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.f label{font-size:12px;color:var(--muted);font-weight:500}
+.f .hint{font-size:12px;color:var(--muted)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13px}
+.note{padding:10px 12px;border-radius:var(--r);font-size:13px;background:var(--sunk)}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.crit{background:var(--crit-soft);color:var(--crit)}
+.note.good{background:var(--good-soft);color:var(--good)}
+.lines{display:grid;grid-template-columns:minmax(0,1fr) 130px 70px 110px;gap:6px}
+.lines .lh{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.overlay{position:fixed;inset:0;background:rgba(10,12,20,.45);display:flex;align-items:flex-start;justify-content:center;padding:max(24px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));overflow:auto;z-index:50}
+.dialog{background:var(--surface);border:1px solid var(--line);border-radius:10px;width:min(620px,100%);box-shadow:0 18px 50px rgba(0,0,0,.25)}
+.dialog.wide{width:min(860px,100%)}
+.dialog header{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line);gap:12px}
+.dialog header h2{font-size:20px}
+.icon{all:unset;cursor:pointer;font-size:22px;line-height:1;padding:2px 8px;border-radius:var(--r);color:var(--muted)}
+.icon:focus-visible{outline:2px solid var(--accent)}
+.mbody{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.merr{margin:0 18px 12px}
+.dialog footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--line);flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 16px;border-radius:20px;font-size:13px;z-index:60;max-width:calc(100% - 32px);text-align:center}
+.sheet{background:var(--sheet);color:var(--sheet-ink);border:1px solid var(--sheet-line);padding:28px;font-size:13px;overflow-x:auto}
+.sheet h3{font-family:var(--f-display);font-size:24px;color:var(--sheet-ink)}
+.sheet table th{color:#5b5f6b;border-color:var(--sheet-line)}
+.sheet table td{border-color:var(--sheet-line)}
+.sheet .top{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+.sheet .small{font-size:11.5px;color:#5b5f6b}
+.mail{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.mail .mh{padding:10px 14px;background:var(--sunk);font-size:12.5px;display:grid;grid-template-columns:70px minmax(0,1fr);gap:2px 8px}
+.mail pre{margin:0;padding:14px;white-space:pre-wrap;font-family:var(--f-body);font-size:13.5px;line-height:1.6}
+.att{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 14px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{all:unset;cursor:pointer;padding:8px 12px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--accent);font-weight:600}
+.tabs button:focus-visible{outline:2px solid var(--accent)}
+.kv{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 12px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:16px}
+.hidden-sm{}
+@media (max-width:980px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.grid3{grid-template-columns:1fr}}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  .nav{position:sticky;top:env(safe-area-inset-top,0px);height:auto;flex-direction:row;align-items:center;padding:8px max(12px,env(safe-area-inset-right,0px)) 8px max(12px,env(safe-area-inset-left,0px));border-right:0;border-bottom:1px solid var(--line);z-index:20;overflow-x:auto;gap:12px}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+  .brand span{display:none}
+  .brand b{font-size:18px}
+  .navlist{flex-direction:row}
+  .navlist button{white-space:nowrap;padding:6px 10px}
+  .who{margin:0;border:0;padding:0;flex-direction:row;align-items:center}
+  .who label,.demo{display:none}
+  .who select{width:150px}
+  .grid2,.split{grid-template-columns:1fr}
+  .day{grid-template-columns:1fr;gap:6px}
+}
+@media (max-width:560px){
+  .head h1{font-size:25px}
+  .form{grid-template-columns:1fr}
+  .kpis{grid-template-columns:1fr 1fr}
+  .kpi strong{font-size:18px}
+  .appt{grid-template-columns:52px minmax(0,1fr)}
+  .appt .ctl{grid-column:1/-1;justify-content:flex-start}
+  .lines{grid-template-columns:1fr 1fr}
+  .lines .lh{display:none}
+  .lines .lib{grid-column:1/-1}
+  .kv{grid-template-columns:1fr}
+  .kv dt{margin-top:6px}
+  .sheet{padding:16px}
+}
+@media (prefers-reduced-motion:no-preference){.btn,.navlist button{transition:background .15s,border-color .15s}}
+</style>
+
+<div class="app">
+  <nav class="nav" aria-label="Modules">
+    <div class="brand"><b>LexCabinet</b><span id="cabname"></span></div>
+    <div class="navlist" id="navlist"></div>
+    <div class="who">
+      <label for="me">Connecté en tant que</label>
+      <select id="me"></select>
+      <div class="demo">Prototype : données de démonstration, rien n'est envoyé.</div>
+    </div>
+  </nav>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+<div id="modal" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+/* ---------- utilitaires ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const z = n => String(n).padStart(2,'0');
+const ymd = d => `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const day = (off,hm='09:00') => ymd(addDays(TODAY,off)) + 'T' + hm;
+const dOnly = off => ymd(addDays(TODAY,off));
+const T = ymd(TODAY);
+const parse = s => new Date(s.length === 10 ? s + 'T00:00' : s);
+const fdate = s => parse(s).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
+const fday = s => parse(s).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+const ftime = s => s.slice(11,16).replace(':','h');
+const nowIso = () => { const d = new Date(); return ymd(d) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes()); };
+const num = (n,d=2) => Number(n).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const money = (n,cur) => cur === 'CDF' ? num(n,0) + ' FC' : num(n) + ' $';
+const r2 = n => Math.round(n*100)/100;
+let seq = 500; const nid = p => p + (++seq);
+
+/* ---------- données de démonstration ---------- */
+const S = {
+  me: 'u1',
+  settings: { cabinet:'Cabinet Mukendi & Associés', adresse:'12, avenue de la Justice, Gombe, Kinshasa', barreau:'Barreau de Kinshasa/Gombe', rccm:'CD/KNG/RCCM/19-B-02231', idnat:'01-83-N48211K', nif:'A1905521Q', email:'contact@mukendi-avocats.example', tel:'+243 81 000 0000', banque:'Rawbank, compte USD 0501-0000000-01', seuil:500, tva:false, consultFee:100 },
+  rates: [ {date:dOnly(-7), rate:2790, source:'Saisie manuelle'}, {date:T, rate:2800, source:'Saisie manuelle'} ],
+  users: [
+    {id:'u1', name:'Me Grâce Mukendi', role:'admin', title:'Associée gérante'},
+    {id:'u2', name:'Me Joël Kabeya', role:'avocat', title:'Avocat'},
+    {id:'u3', name:'Me Sarah Ilunga', role:'avocat', title:'Avocate'},
+    {id:'u4', name:'Nadine Lukusa', role:'secretaire', title:'Secrétaire'},
+    {id:'u5', name:'Chris Mbuyi', role:'caissier', title:'Caissier'},
+    {id:'u6', name:'Fiston Tshibangu', role:'comptable', title:'Comptable'}
+  ],
+  clients: [
+    {id:'c1', type:'morale', name:'Kivu Agro SARL', tel:'+243 99 712 4410', email:'direction@kivuagro.example', adresse:'Av. du Lac 45, Goma', rccm:'CD/GOM/RCCM/21-B-00412', idnat:'5-93-N71204M', consent:true},
+    {id:'c2', type:'physique', name:'Jean-Pierre Lumbala', tel:'+243 81 554 2098', email:'jp.lumbala@example.cd', adresse:'Q. Matonge, Kalamu, Kinshasa', consent:true},
+    {id:'c3', type:'physique', name:'Esther Kalala', tel:'+243 85 220 7731', email:'esther.kalala@example.cd', adresse:'Av. Kasa-Vubu 210, Bandalungwa', consent:true},
+    {id:'c4', type:'morale', name:'Congo Express Transports SARL', tel:'+243 97 301 8822', email:'juridique@congoexpress.example', adresse:'Bd du 30 Juin 1550, Gombe', rccm:'CD/KNG/RCCM/14-B-07719', idnat:'01-72-N50911G', consent:true},
+    {id:'c5', type:'physique', name:'Patrice Ngoy', tel:'+243 82 640 1177', email:'', adresse:'Kamalondo, Lubumbashi', consent:false},
+    {id:'c6', type:'physique', name:'Rachel Mwamba', tel:'+243 89 118 3307', email:'rachel.mwamba@example.cd', adresse:'Limete, Kinshasa', consent:true, prospect:true}
+  ],
+  cases: [
+    {id:'d1', ref:'LEX-2026-0038', title:'Kivu Agro c/ Tropical Logistics', clientId:'c1', adverse:'Tropical Logistics SA', matiere:'Commercial', juridiction:'Tribunal de commerce de Kinshasa/Gombe', rg:'RCE 1123', status:'En cours', lawyerId:'u2', team:['u1'], fee:{type:'Forfait', cur:'USD', amount:2500}, opened:dOnly(-60),
+      events:[{date:dOnly(-40), type:'Acte', text:'Assignation signifiée à Tropical Logistics SA'},{date:dOnly(-10), type:'Audience', text:'Mise en état, renvoi contradictoire'},{date:T, type:'Audience', text:'Plaidoiries, chambre 2'}],
+      time:[{id:'t1', date:dOnly(-35), userId:'u2', min:180, text:'Rédaction des conclusions', bill:false, billed:false}]},
+    {id:'d2', ref:'LEX-2026-0041', title:'Lumbala, litige parcellaire Kimbanseke', clientId:'c2', adverse:'Héritiers Mpiana', matiere:'Foncier', juridiction:'Tribunal de grande instance de Kinshasa/Ndjili', rg:'RC 4471', status:'En cours', lawyerId:'u3', team:[], fee:{type:'Taux horaire', cur:'USD', amount:120}, opened:dOnly(-30),
+      events:[{date:dOnly(-15), type:'Acte', text:'Procès-verbal de descente sur la parcelle'},{date:dOnly(-1), type:'Note', text:'Copie du certificat d\'enregistrement reçue'}],
+      time:[{id:'t2', date:dOnly(-20), userId:'u3', min:120, text:'Analyse du certificat d\'enregistrement', bill:true, billed:true},
+            {id:'t3', date:dOnly(-15), userId:'u3', min:240, text:'Descente sur la parcelle et procès-verbal', bill:true, billed:true},
+            {id:'t4', date:dOnly(-4), userId:'u3', min:90, text:'Préparation de l\'audience', bill:true, billed:false},
+            {id:'t5', date:dOnly(-2), userId:'u3', min:60, text:'Échanges avec le conservateur des titres immobiliers', bill:true, billed:false}]},
+    {id:'d3', ref:'LEX-2026-0044', title:'Kalala c/ Société Minière du Sud', clientId:'c3', adverse:'Société Minière du Sud SA', matiere:'Social', juridiction:'Tribunal de travail de Kinshasa/Gombe', rg:'RAT 902', status:'Ouvert', lawyerId:'u2', team:[], fee:{type:'Provision + résultat', cur:'USD', amount:600}, opened:dOnly(-5), events:[], time:[]},
+    {id:'d4', ref:'LEX-2026-0029', title:'Congo Express, conseil juridique OHADA', clientId:'c4', adverse:'', matiere:'Conseil', juridiction:'', rg:'', status:'En cours', lawyerId:'u1', team:['u2'], fee:{type:'Abonnement mensuel', cur:'USD', amount:800}, opened:dOnly(-120), events:[], time:[]},
+    {id:'d5', ref:'LEX-2026-0046', title:'Ministère public c/ Ngoy', clientId:'c5', adverse:'Ministère public', matiere:'Pénal', juridiction:'Tribunal de paix de Lubumbashi/Kamalondo', rg:'RP 3318', status:'En délibéré', lawyerId:'u3', team:[], fee:{type:'Forfait', cur:'CDF', amount:2800000}, opened:dOnly(-45),
+      events:[{date:dOnly(-12), type:'Audience', text:'Plaidoiries, prise en délibéré'}], time:[]}
+  ],
+  appts: [
+    {id:'a1', clientId:'c6', lawyerId:'u1', start:day(0,'09:00'), dur:60, type:'Consultation', lieu:'Cabinet', objet:'Premier rendez-vous : bail commercial', status:'Confirmé', caseId:null},
+    {id:'a2', clientId:'c1', lawyerId:'u2', start:day(0,'11:30'), dur:120, type:'Audience', lieu:'Tribunal de commerce, chambre 2', objet:'Plaidoiries RCE 1123', status:'Planifié', caseId:'d1'},
+    {id:'a3', clientId:'c2', lawyerId:'u3', start:day(0,'15:00'), dur:60, type:'Suivi de dossier', lieu:'Cabinet', objet:'Point sur le litige parcellaire', status:'Confirmé', caseId:'d2'},
+    {id:'a4', clientId:'c3', lawyerId:'u2', start:day(1,'10:00'), dur:60, type:'Suivi de dossier', lieu:'Visioconférence', objet:'Stratégie avant la conciliation', status:'Planifié', caseId:'d3'},
+    {id:'a5', clientId:'c4', lawyerId:'u1', start:day(1,'14:30'), dur:90, type:'Consultation', lieu:'Cabinet', objet:'Revue des statuts et du pacte d\'associés', status:'Confirmé', caseId:'d4'},
+    {id:'a6', clientId:'c5', lawyerId:'u3', start:day(3,'09:30'), dur:120, type:'Audience', lieu:'Tribunal de paix de Kamalondo', objet:'Prononcé RP 3318', status:'Planifié', caseId:'d5'},
+    {id:'a7', clientId:'c2', lawyerId:'u3', start:day(-1,'10:00'), dur:60, type:'Consultation', lieu:'Cabinet', objet:'Analyse du certificat', status:'Honoré', caseId:'d2'},
+    {id:'a8', clientId:'c3', lawyerId:'u2', start:day(-2,'16:00'), dur:30, type:'Signature', lieu:'Cabinet', objet:'Signature de la convention d\'honoraires', status:'Absent', caseId:'d3'}
+  ],
+  invoices: [
+    {id:'i1', num:'FAC-2026-00115', clientId:'c1', caseId:'d1', date:dOnly(-20), due:dOnly(10), cur:'USD', rate:2790, tva:false, status:'émise', lines:[{lib:'Honoraires forfaitaires, procédure RCE 1123', type:'Honoraires', qty:1, pu:2500}]},
+    {id:'i2', num:'FAC-2026-00116', clientId:'c4', caseId:'d4', date:dOnly(-8), due:dOnly(7), cur:'USD', rate:2790, tva:false, status:'émise', lines:[{lib:'Abonnement mensuel de conseil juridique', type:'Honoraires', qty:1, pu:800}]},
+    {id:'i3', num:'FAC-2026-00117', clientId:'c2', caseId:'d2', date:dOnly(-12), due:dOnly(-2), cur:'USD', rate:2790, tva:false, status:'émise', lines:[{lib:'Temps passé : 6 h au taux de 120 $', type:'Honoraires', qty:6, pu:120},{lib:'Frais de descente sur la parcelle', type:'Débours', qty:1, pu:50}]},
+    {id:'i4', num:'FAC-2026-00118', clientId:'c5', caseId:'d5', date:dOnly(-9), due:dOnly(5), cur:'CDF', rate:2790, tva:false, status:'émise', lines:[{lib:'Honoraires forfaitaires, défense RP 3318', type:'Honoraires', qty:1, pu:2800000}]},
+    {id:'i5', num:null, clientId:'c3', caseId:'d3', date:T, due:dOnly(15), cur:'USD', rate:2800, tva:false, status:'brouillon', lines:[{lib:'Provision sur honoraires, dossier RAT 902', type:'Honoraires', qty:1, pu:600}]}
+  ],
+  counters: { fac:118, rc:310 },
+  cash: { since:dOnly(-30), init:{USD:1200, CDF:2500000}, initRate:2780 },
+  moves: [],
+  session: null,
+  closedSessions: [],
+  emails: [],
+  audit: [],
+  templates: {
+    confirmation:{name:'Confirmation de rendez-vous', subject:'Confirmation de votre rendez-vous du {date}', body:'Bonjour {client},\n\nNous confirmons votre rendez-vous avec {avocat} le {date} à {heure}.\nLieu : {lieu}\nObjet : {objet}\n\nLe fichier joint ajoute ce rendez-vous à votre agenda.\nPour le reporter, répondez à cet e-mail ou appelez le {tel_cabinet}.\n\n{cabinet}'},
+    rappel:{name:'Rappel de rendez-vous (J-1)', subject:'Rappel : votre rendez-vous de demain à {heure}', body:'Bonjour {client},\n\nNous vous rappelons votre rendez-vous de demain, {date} à {heure}, avec {avocat}.\nLieu : {lieu}\n\nMerci d\'apporter les pièces utiles à votre dossier.\n\n{cabinet}'},
+    annulation:{name:'Annulation de rendez-vous', subject:'Annulation de votre rendez-vous du {date}', body:'Bonjour {client},\n\nVotre rendez-vous du {date} à {heure} avec {avocat} est annulé.\nNous vous recontactons pour fixer une nouvelle date.\n\n{cabinet}'},
+    facture:{name:'Envoi de facture', subject:'Facture {numero} — {cabinet}', body:'Bonjour {client},\n\nVeuillez trouver ci-joint la facture {numero} d\'un montant de {montant}, payable au plus tard le {echeance}.\n\nRèglement en espèces au cabinet, par virement ({banque}) ou par mobile money.\n\n{cabinet}'},
+    recu:{name:'Reçu de paiement', subject:'Reçu {numero} : paiement reçu', body:'Bonjour {client},\n\nNous accusons réception de votre paiement de {montant} ({mode}).\nLe reçu {numero} est joint à cet e-mail.\n\n{cabinet}'},
+    recap:{name:'Récapitulatif quotidien de l\'avocat', subject:'Votre journée du {date}', body:'Bonjour {avocat},\n\nVoici vos rendez-vous et audiences du jour :\n{liste}\n\nBonne journée.'}
+  }
+};
+
+const CATS = [
+  ['Loyer','622','Locations et charges locatives'],
+  ['Salaires','661','Rémunérations du personnel'],
+  ['Frais de greffe et de justice','646','Droits d\'enregistrement et timbres'],
+  ['Transport','618','Frais de transport'],
+  ['Fournitures','6055','Fournitures de bureau'],
+  ['Équipement','6054','Petit matériel et équipement'],
+  ['Débours client','4711','Débours à refacturer'],
+  ['Autre','638','Autres charges externes']
+];
+const ACC = { '12':'Report à nouveau','411':'Clients','4191':'Clients, avances reçues','4431':'TVA facturée','521':'Banque','5216':'Monnaie électronique','5711':'Caisse USD','5712':'Caisse CDF','706':'Honoraires et prestations','658':'Écarts de caisse (charges)','758':'Écarts de caisse (produits)' };
+CATS.forEach(c => ACC[c[1]] = c[2]);
+const MODES = ['Espèces','Virement','Chèque','Mobile money'];
+const ROLES = { admin:'Administrateur', avocat:'Avocat', secretaire:'Secrétariat', caissier:'Caisse', comptable:'Comptabilité' };
+const VIEWS = [['dash','Tableau de bord'],['agenda','Agenda'],['clients','Clients'],['dossiers','Dossiers'],['factures','Factures'],['caisse','Caisse'],['compta','Comptabilité'],['emails','E-mails'],['params','Paramètres']];
+const ACCESS = { admin:VIEWS.map(v=>v[0]), avocat:['dash','agenda','clients','dossiers','factures'], secretaire:['dash','agenda','clients','dossiers','emails'], caissier:['dash','factures','caisse'], comptable:['dash','factures','caisse','compta'] };
+const TYPES = ['Consultation','Suivi de dossier','Signature','Audience'];
+const APPT_STATUS = ['Planifié','Confirmé','Honoré','Absent','Annulé','Reporté'];
+
+/* mouvements de caisse de démonstration */
+function mv(o){ return Object.assign({id:nid('m'), status:'ok', by:'u5', rate:2790, mode:'Espèces'}, o); }
+S.moves.push(
+  mv({date:day(-6,'10:12'), type:'in', cur:'USD', amount:1500, clientId:'c1', invoiceId:'i1', amountInv:1500, label:'Acompte FAC-2026-00115', receipt:'RC-2026-0306'}),
+  mv({date:day(-5,'14:40'), type:'in', cur:'USD', amount:800, mode:'Virement', ref:'Rawbank VIR-88412', clientId:'c4', invoiceId:'i2', amountInv:800, label:'Règlement FAC-2026-00116', receipt:'RC-2026-0307'}),
+  mv({date:day(-3,'09:05'), type:'out', cur:'USD', amount:450, cat:'Loyer', label:'Loyer du cabinet, quote-part du mois', benef:'SCI Gombe Plaza', by:'u5'}),
+  mv({date:day(-2,'11:20'), type:'in', cur:'CDF', amount:700000, clientId:'c5', invoiceId:'i4', amountInv:700000, label:'Acompte FAC-2026-00118', receipt:'RC-2026-0308', rate:2795}),
+  mv({date:day(-1,'08:50'), type:'out', cur:'CDF', amount:150000, cat:'Frais de greffe et de justice', label:'Consignation des frais, RCE 1123', benef:'Greffe du tribunal de commerce', rate:2800}),
+  mv({date:day(-1,'16:30'), type:'fx', cur:'USD', amount:200, to:'CDF', amountTo:560000, rate:2800, label:'Change USD vers CDF pour menues dépenses'}),
+  mv({date:day(0,'09:40'), type:'in', cur:'USD', amount:300, clientId:'c1', invoiceId:'i1', amountInv:300, label:'Règlement partiel FAC-2026-00115', receipt:'RC-2026-0309', rate:2800}),
+  mv({date:day(0,'10:15'), type:'out', cur:'USD', amount:820, cat:'Équipement', label:'Ordinateur portable pour le secrétariat', benef:'Kin Informatique', status:'pending', rate:2800, by:'u5'}),
+  mv({date:day(0,'10:50'), type:'in', cur:'USD', amount:100, mode:'Mobile money', ref:'M-Pesa 7K3P29XQ', clientId:'c6', invoiceId:null, amountInv:0, label:'Provision consultation Rachel Mwamba', receipt:'RC-2026-0310', rate:2800})
+);
+
+/* ---------- calculs ---------- */
+const rateNow = () => S.rates[S.rates.length-1].rate;
+const toUSD = (a,cur,r) => cur === 'USD' ? a : a / (r || rateNow());
+const client = id => S.clients.find(c => c.id === id);
+const cname = id => client(id)?.name || '—';
+const user = id => S.users.find(u => u.id === id);
+const uname = id => user(id)?.name || '—';
+const caseOf = id => S.cases.find(d => d.id === id);
+const me = () => user(S.me);
+const isAdmin = () => me().role === 'admin';
+
+function invTotals(inv){
+  const sub = inv.lines.reduce((s,l) => s + l.qty*l.pu, 0);
+  const taxable = inv.lines.filter(l => l.type !== 'Débours').reduce((s,l) => s + l.qty*l.pu, 0);
+  const tax = inv.tva ? r2(taxable*0.16) : 0;
+  const total = r2(sub + tax);
+  const paid = r2(S.moves.filter(m => m.type === 'in' && m.invoiceId === inv.id && m.status === 'ok').reduce((s,m) => s + m.amountInv, 0));
+  return { sub, tax, total, paid, rest: Math.max(0, r2(total - paid)) };
+}
+function invStatus(inv){
+  if (inv.status === 'brouillon') return 'Brouillon';
+  if (inv.status === 'annulée') return 'Annulée';
+  const t = invTotals(inv);
+  if (t.rest < 0.01) return 'Payée';
+  if (inv.due < T) return t.paid > 0 ? 'Partielle, échue' : 'Échue';
+  return t.paid > 0 ? 'Partiellement payée' : 'Émise';
+}
+const STATUS_CLS = { 'Payée':'good','Honoré':'good','Confirmé':'acc','Échue':'crit','Partielle, échue':'crit','Absent':'crit','Annulée':'','Annulé':'','Partiellement payée':'warn','Émise':'acc','Brouillon':'','Planifié':'','Reporté':'warn','Envoyé':'good','Échec':'crit','Non envoyé':'warn','En attente':'warn','Validé':'good','Ouvert':'acc','En cours':'acc','En délibéré':'warn','Clôturé':'good','Archivé':'' };
+const chip = s => `<span class="chip ${STATUS_CLS[s] ?? ''}">${esc(s)}</span>`;
+
+const cashAcct = (mode,cur) => mode === 'Espèces' ? (cur === 'USD' ? '5711' : '5712') : mode === 'Mobile money' ? '5216' : '521';
+function balances(upto){
+  const b = { USD:S.cash.init.USD, CDF:S.cash.init.CDF, bank:0, momo:0 };
+  S.moves.forEach(m => {
+    if (m.status !== 'ok') return;
+    if (upto && m.date >= upto) return;
+    if (m.type === 'fx'){ b[m.cur] -= m.amount; b[m.to] += m.amountTo; return; }
+    const sign = m.type === 'in' ? 1 : m.type === 'out' ? -1 : 1;
+    if (m.mode === 'Espèces') b[m.cur] += sign*m.amount;
+    else if (m.mode === 'Mobile money') b.momo += sign*toUSD(m.amount,m.cur,m.rate);
+    else b.bank += sign*toUSD(m.amount,m.cur,m.rate);
+  });
+  return b;
+}
+const b0 = balances(T);
+S.session = { open:true, openedAt:day(0,'08:05'), by:'u5', fund:{USD:b0.USD, CDF:b0.CDF} };
+
+function entries(){
+  const E = [];
+  const add = (date,jnl,piece,lib,lines) => E.push({date, jnl, piece, lib, lines: lines.filter(l => Math.abs(l[1]) > 0.004 || Math.abs(l[2]) > 0.004).map(l => [l[0], r2(l[1]), r2(l[2])])});
+  const iu = S.cash.init.USD, ic = S.cash.init.CDF / S.cash.initRate;
+  add(S.cash.since,'OD','AN','Soldes d\'ouverture de caisse',[['5711',iu,0],['5712',ic,0],['12',0,iu+ic]]);
+  S.invoices.forEach(i => {
+    if (!i.num) return;
+    const t = invTotals(i), f = a => toUSD(a, i.cur, i.rate);
+    add(i.date,'VT',i.num,'Facture ' + cname(i.clientId),[['411',f(t.total),0],['706',0,f(t.sub)],['4431',0,f(t.tax)]]);
+    if (i.status === 'annulée') add(i.cancelDate,'VT','AV-' + i.num.slice(4),'Avoir sur ' + i.num,[['706',f(t.sub),0],['4431',f(t.tax),0],['411',0,f(t.total)]]);
+  });
+  S.moves.forEach(m => {
+    if (m.status !== 'ok') return;
+    const u = toUSD(m.amount, m.cur, m.rate), a = cashAcct(m.mode, m.cur), d = m.date.slice(0,10);
+    if (m.type === 'in') add(d, m.mode === 'Espèces' ? 'CA' : 'BQ', m.receipt || '', m.label, [[a,u,0],[m.invoiceId ? '411' : '4191',0,u]]);
+    else if (m.type === 'out'){ const acc = (CATS.find(c => c[0] === m.cat) || CATS[7])[1]; add(d, m.mode === 'Espèces' ? 'CA' : 'BQ', m.piece || '', m.label, [[acc,u,0],[a,0,u]]); }
+    else if (m.type === 'fx') add(d,'CA','CHG',m.label,[[cashAcct('Espèces',m.to),u,0],[a,0,u]]);
+    else if (m.type === 'adj') add(d,'CA','ECART',m.label, m.amount > 0 ? [[a,u,0],['758',0,u]] : [['658',-u,0],[a,0,-u]]);
+  });
+  return E.sort((x,y) => x.date.localeCompare(y.date));
+}
+
+/* ---------- e-mails ---------- */
+const fill = (t,v) => t.replace(/\{(\w+)\}/g, (m,k) => v[k] ?? m);
+function baseVars(){ return { cabinet:S.settings.cabinet, tel_cabinet:S.settings.tel, banque:S.settings.banque }; }
+function apptVars(a){ return Object.assign(baseVars(), { client:cname(a.clientId), avocat:uname(a.lawyerId), date:fday(a.start), heure:ftime(a.start), lieu:a.lieu, objet:a.objet }); }
+function sendMail(tplKey, c, vars, attach=[], toOverride){
+  const tpl = S.templates[tplKey];
+  const to = toOverride || c?.email;
+  const e = { id:nid('e'), at:nowIso(), tpl:tplKey, toName: toOverride ? vars.avocat : (c?.name || ''), to:to || '', subject:fill(tpl.subject, vars), body:fill(tpl.body, vars), attach, status:'Envoyé', error:'' };
+  if (!toOverride && c && !c.consent){ e.status = 'Non envoyé'; e.error = 'Le client n\'a pas accepté les notifications par e-mail.'; }
+  else if (!to){ e.status = 'Échec'; e.error = 'Aucune adresse e-mail sur la fiche.'; }
+  S.emails.unshift(e);
+  return e;
+}
+function log(action, detail){ S.audit.unshift({ at:nowIso(), userId:S.me, action, detail }); }
+
+/* historique e-mails de démonstration */
+(function(){
+  const a2 = S.appts.find(a => a.id === 'a2'), a4 = S.appts.find(a => a.id === 'a4'), a6 = S.appts.find(a => a.id === 'a6');
+  let e = sendMail('confirmation', client('c1'), apptVars(a2), ['rendez-vous.ics']); e.at = day(-9,'10:02');
+  e = sendMail('facture', client('c2'), Object.assign(baseVars(), {client:'Jean-Pierre Lumbala', numero:'FAC-2026-00117', montant:money(770,'USD'), echeance:fdate(dOnly(-2))}), ['FAC-2026-00117.pdf']); e.at = day(-12,'15:20');
+  e = sendMail('confirmation', client('c5'), apptVars(a6), ['rendez-vous.ics']); e.at = day(-3,'09:15');
+  e = sendMail('confirmation', client('c3'), apptVars(a4), ['rendez-vous.ics']); e.at = day(-1,'11:40');
+  S.emails.sort((x,y) => y.at.localeCompare(x.at));
+  S.audit.push({at:day(0,'08:05'), userId:'u5', action:'Ouverture de caisse', detail:'Fonds comptés conformes au solde théorique'});
+})();
+
+/* ---------- interface ---------- */
+const ui = { view:'dash', week:mondayOf(TODAY), agendaLawyer:'all', invFilter:'all', clientQ:'', comptaTab:'journal', emailTab:'log', emailSel:null };
+function mondayOf(d){ const x = new Date(d); const k = (x.getDay() + 6) % 7; x.setDate(x.getDate() - k); return x; }
+
+function toast(t){ const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 3200); }
+
+let onSubmit = null;
+function modal(title, body, opt = {}){
+  const { submit = 'Enregistrer', wide = false, onsubmit = null, extra = '' } = opt;
+  $('#modal').innerHTML = `<div class="overlay" data-act="overlay"><div class="dialog ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+    <header><h2 id="mtitle">${title}</h2><button type="button" class="icon" data-act="close" aria-label="Fermer">×</button></header>
+    <form id="mform" novalidate><div class="mbody">${body}</div><div class="note crit merr" id="merr" hidden></div>
+    <footer>${extra}${onsubmit ? `<button type="button" class="btn ghost" data-act="close">Annuler</button><button class="btn primary" type="submit">${submit}</button>` : `<button type="button" class="btn" data-act="close">Fermer</button>`}</footer></form></div></div>`;
+  onSubmit = onsubmit;
+  $('#modal').hidden = false;
+  const f = $('#mform').querySelector('input:not([type=hidden]),select,textarea');
+  if (f) f.focus();
+  liveAll();
+}
+function closeModal(){ $('#modal').hidden = true; $('#modal').innerHTML = ''; onSubmit = null; }
+const field = (label, html, cls = '', hint = '') => `<div class="f ${cls}"><label>${label}</label>${html}${hint ? `<span class="hint">${hint}</span>` : ''}</div>`;
+const sel = (name, opts, val, attrs = '') => `<select name="${name}" id="f-${name}" ${attrs}>${opts.map(o => { const [v,l] = Array.isArray(o) ? o : [o,o]; return `<option value="${esc(v)}" ${String(v) === String(val) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`;
+const inp = (name, type, val = '', attrs = '') => `<input type="${type}" name="${name}" id="f-${name}" value="${esc(val)}" ${attrs}>`;
+
+function render(){
+  const role = me().role;
+  if (!ACCESS[role].includes(ui.view)) ui.view = 'dash';
+  $('#cabname').textContent = S.settings.cabinet;
+  const pending = S.moves.filter(m => m.status === 'pending').length;
+  const overdue = S.invoices.filter(i => ['Échue','Partielle, échue'].includes(invStatus(i))).length;
+  $('#navlist').innerHTML = VIEWS.filter(v => ACCESS[role].includes(v[0])).map(([k,l]) => {
+    const b = k === 'caisse' && pending && (isAdmin() || role === 'caissier') ? pending : k === 'factures' && overdue ? overdue : 0;
+    return `<button data-act="go" data-v="${k}" ${ui.view === k ? 'aria-current="page"' : ''}>${l}${b ? `<span class="badge" aria-label="${b} à traiter">${b}</span>` : ''}</button>`;
+  }).join('');
+  $('#me').innerHTML = S.users.map(u => `<option value="${u.id}" ${u.id === S.me ? 'selected' : ''}>${esc(u.name)} · ${ROLES[u.role]}</option>`).join('');
+  $('#view').innerHTML = ({dash:vDash, agenda:vAgenda, clients:vClients, dossiers:vDossiers, factures:vFactures, caisse:vCaisse, compta:vCompta, emails:vEmails, params:vParams})[ui.view]();
+  if (location.hash.slice(1) !== ui.view) history.replaceState(null, '', '#' + ui.view);
+}
+const head = (title, sub, actions = '') => `<div class="head"><div><h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}</div><div class="actions">${actions}</div></div>`;
+const visibleCases = () => me().role === 'avocat' ? S.cases.filter(d => d.lawyerId === S.me || d.team.includes(S.me)) : S.cases;
+
+/* ---------- tableau de bord ---------- */
+function vDash(){
+  const role = me().role;
+  const todays = S.appts.filter(a => a.start.slice(0,10) === T && a.status !== 'Annulé' && (role !== 'avocat' || a.lawyerId === S.me)).sort((a,b) => a.start.localeCompare(b.start));
+  const b = balances();
+  const unpaid = S.invoices.filter(i => i.num && i.status !== 'annulée');
+  const unpaidUSD = unpaid.reduce((s,i) => s + toUSD(invTotals(i).rest, i.cur, rateNow()), 0);
+  const overdue = unpaid.filter(i => i.due < T && invTotals(i).rest > 0);
+  const hearings = S.cases.flatMap(d => d.events.filter(e => e.type === 'Audience' && e.date >= T).map(e => ({...e, d}))).concat(S.appts.filter(a => a.type === 'Audience' && a.start.slice(0,10) >= T && a.status !== 'Annulé').map(a => ({date:a.start.slice(0,10), text:a.objet, d:caseOf(a.caseId), time:a.start}))).filter((x,i,arr) => arr.findIndex(y => y.date === x.date && y.d?.id === x.d?.id) === i).sort((x,y) => x.date.localeCompare(y.date)).slice(0,5);
+  const caseCount = s => visibleCases().filter(d => d.status === s).length;
+  return head(`Bonjour, ${esc(me().name.replace(/^Me /,'Maître '))}`, `${fday(T)} · taux du jour : 1 $ = ${num(rateNow(),0)} FC`) + `
+  <div class="kpis">
+    <div class="kpi"><small>Rendez-vous du jour</small><strong>${todays.length}</strong><span>${todays.filter(a => a.type === 'Audience').length} audience(s)</span></div>
+    <div class="kpi"><small>Caisse USD</small><strong>${money(b.USD,'USD')}</strong><span>espèces, solde théorique</span></div>
+    <div class="kpi"><small>Caisse CDF</small><strong>${money(b.CDF,'CDF')}</strong><span>≈ ${money(b.CDF/rateNow(),'USD')}</span></div>
+    <div class="kpi"><small>Reste à encaisser</small><strong>${money(unpaidUSD,'USD')}</strong><span>${overdue.length} facture(s) échue(s), en équivalent USD</span></div>
+  </div>
+  <div class="grid2">
+    <section class="panel"><div class="ph"><h2>Aujourd'hui</h2><button class="btn sm" data-act="go" data-v="agenda">Voir l'agenda</button></div><div class="pbody"><div class="list">
+      ${todays.length ? todays.map(a => `<div class="row"><span class="t">${ftime(a.start)}</span><div class="main"><b>${esc(cname(a.clientId))}</b><div class="sub">${esc(a.type)} · ${esc(uname(a.lawyerId))} · ${esc(a.lieu)}</div></div>${chip(a.status)}</div>`).join('') : '<div class="empty">Aucun rendez-vous aujourd\'hui.</div>'}
+    </div></div></section>
+    <section class="panel"><div class="ph"><h2>Factures échues</h2><button class="btn sm" data-act="go" data-v="factures">Voir les factures</button></div><div class="pbody"><div class="list">
+      ${overdue.length ? overdue.map(i => `<div class="row"><span class="t">${i.num.slice(-5)}</span><div class="main"><b>${esc(cname(i.clientId))}</b><div class="sub">Échue le ${fdate(i.due)}</div></div><span class="mono">${money(invTotals(i).rest,i.cur)}</span></div>`).join('') : '<div class="empty">Aucune facture échue.</div>'}
+    </div></div></section>
+    <section class="panel"><div class="ph"><h2>Prochaines audiences</h2></div><div class="pbody"><div class="list">
+      ${hearings.length ? hearings.map(h => `<div class="row"><span class="t">${parse(h.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span><div class="main"><b>${esc(h.d?.title || '')}</b><div class="sub">${esc(h.text)} · ${esc(h.d?.rg || '')}</div></div><span class="chip">${esc(h.d?.matiere || '')}</span></div>`).join('') : '<div class="empty">Aucune audience programmée.</div>'}
+    </div></div></section>
+    <section class="panel"><div class="ph"><h2>Dossiers</h2><button class="btn sm" data-act="go" data-v="dossiers">Voir les dossiers</button></div><div class="pbody">
+      <div class="list">${['Ouvert','En cours','En délibéré','Clôturé'].map(s => `<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><span>${chip(s)}</span><span class="mono">${caseCount(s)}</span></div>`).join('')}</div>
+      ${S.moves.some(m => m.status === 'pending') && isAdmin() ? `<div class="note warn" style="margin-top:10px">${S.moves.filter(m => m.status === 'pending').length} décaissement(s) attendent votre validation. <button class="btn sm" data-act="go" data-v="caisse">Ouvrir la caisse</button></div>` : ''}
+    </div></section>
+  </div>`;
+}
+
+/* ---------- agenda ---------- */
+function vAgenda(){
+  const role = me().role;
+  if (role === 'avocat' && ui.agendaLawyer === 'all') ui.agendaLawyer = S.me;
+  const days = Array.from({length:7}, (_,i) => addDays(ui.week, i));
+  const end = ymd(addDays(ui.week,7));
+  const list = S.appts.filter(a => a.start >= ymd(ui.week) && a.start < end && (ui.agendaLawyer === 'all' || a.lawyerId === ui.agendaLawyer));
+  const toRemind = S.appts.filter(a => a.start.slice(0,10) === dOnly(1) && ['Planifié','Confirmé'].includes(a.status) && !a.reminded).length;
+  return head('Agenda', `Semaine du ${days[0].toLocaleDateString('fr-FR',{day:'numeric',month:'long'})} au ${days[6].toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}`,
+    `<button class="btn" data-act="runScheduler" title="Simule la tâche planifiée qui tourne chaque jour">Envoyer les rappels de demain${toRemind ? ` (${toRemind})` : ''}</button><button class="btn primary" data-act="newAppt">Nouveau rendez-vous</button>`) + `
+  <div class="toolbar">
+    <button class="btn sm" data-act="week" data-d="-7" aria-label="Semaine précédente">‹ Précédente</button>
+    <button class="btn sm" data-act="week" data-d="0">Cette semaine</button>
+    <button class="btn sm" data-act="week" data-d="7" aria-label="Semaine suivante">Suivante ›</button>
+    <span class="sp"></span>
+    <label for="f-lawyer" class="muted">Avocat</label>
+    ${sel('lawyer', [['all','Tous les avocats'], ...lawyers().map(u => [u.id,u.name])], ui.agendaLawyer, 'data-change="lawyer"')}
+  </div>
+  <section class="panel"><div class="pbody">
+  ${days.map(d => { const k = ymd(d); const items = list.filter(a => a.start.slice(0,10) === k).sort((a,b) => a.start.localeCompare(b.start));
+    return `<div class="day ${k === T ? 'today' : ''}"><h3>${d.toLocaleDateString('fr-FR',{weekday:'long'})}<small>${d.toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}${k === T ? ' · aujourd\'hui' : ''}</small></h3><div>
+      ${items.length ? items.map(apptRow).join('') : '<div class="empty">Aucun rendez-vous</div>'}</div></div>`; }).join('')}
+  </div></section>`;
+}
+const lawyers = () => S.users.filter(u => u.role === 'admin' || u.role === 'avocat');
+function apptRow(a){
+  const endT = new Date(parse(a.start).getTime() + a.dur*60000);
+  const canBill = a.status === 'Honoré' && a.type === 'Consultation' && !a.invoiced;
+  return `<div class="appt ${a.status === 'Annulé' ? 'cancel' : ''}"><span class="t mono">${ftime(a.start)}<br><span class="muted" style="font-size:12px">${z(endT.getHours())}h${z(endT.getMinutes())}</span></span>
+    <div class="main"><b>${esc(cname(a.clientId))}</b> <span class="chip">${esc(a.type)}</span><div class="sub">${esc(a.objet)}</div><div class="sub">${esc(uname(a.lawyerId))} · ${esc(a.lieu)}${a.caseId ? ' · ' + esc(caseOf(a.caseId).ref) : ''}${a.reminded ? ' · rappel envoyé' : ''}</div></div>
+    <div class="ctl">${canBill ? `<button class="btn sm" data-act="billAppt" data-id="${a.id}">Facturer</button>` : ''}${a.invoiced ? '<span class="chip good">Facturé</span>' : ''}
+      <label class="muted" for="st-${a.id}" style="font-size:12px">Statut</label><select id="st-${a.id}" data-change="apptStatus" data-id="${a.id}">${APPT_STATUS.map(s => `<option ${s === a.status ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>`;
+}
+function newAppt(){
+  const lw = lawyers();
+  modal('Nouveau rendez-vous', `<div class="form">
+    ${field('Client', sel('clientId', [['', 'Choisir un client'], ...S.clients.map(c => [c.id, c.name + (c.prospect ? ' (prospect)' : '')]), ['__new','+ Nouveau prospect']], '', 'data-live="apptClient"'), 'full')}
+    <div class="full form" id="newProspect" hidden style="grid-template-columns:repeat(2,minmax(0,1fr))">${field('Nom du prospect', inp('pname','text'))}${field('E-mail', inp('pemail','email'))}</div>
+    ${field('Avocat', sel('lawyerId', lw.map(u => [u.id,u.name]), me().role === 'avocat' ? S.me : lw[0].id))}
+    ${field('Type', sel('type', TYPES, 'Consultation'))}
+    ${field('Date', inp('date','date', dOnly(1)))}
+    ${field('Heure', inp('time','time','10:00'))}
+    ${field('Durée', sel('dur', [[30,'30 min'],[60,'1 h'],[90,'1 h 30'],[120,'2 h'],[180,'3 h']], 60))}
+    ${field('Lieu', sel('lieu', ['Cabinet','Visioconférence','Tribunal','Chez le client'], 'Cabinet'))}
+    ${field('Dossier (facultatif)', sel('caseId', [['','Aucun dossier']], ''), 'full')}
+    ${field('Objet', inp('objet','text','', 'placeholder="Ex. : point sur la procédure"'), 'full')}
+  </div><div class="note">À l'enregistrement, le client reçoit un e-mail de confirmation avec le fichier .ics, puis un rappel la veille.</div>`,
+  { submit:'Créer le rendez-vous', onsubmit:f => {
+    let cid = f.clientId;
+    if (!cid) return 'Choisissez un client.';
+    if (cid === '__new'){ if (!f.pname.trim()) return 'Indiquez le nom du prospect.'; const c = {id:nid('c'), type:'physique', name:f.pname.trim(), tel:'', email:f.pemail.trim(), adresse:'', consent:true, prospect:true}; S.clients.push(c); cid = c.id; }
+    if (!f.date || !f.time) return 'Indiquez la date et l\'heure.';
+    const start = f.date + 'T' + f.time, s = parse(start).getTime(), e = s + Number(f.dur)*60000;
+    const clash = S.appts.find(a => a.lawyerId === f.lawyerId && !['Annulé','Reporté'].includes(a.status) && parse(a.start).getTime() < e && parse(a.start).getTime() + a.dur*60000 > s);
+    if (clash) return `Conflit d'agenda : ${uname(f.lawyerId)} a déjà « ${clash.objet} » avec ${cname(clash.clientId)} de ${ftime(clash.start)} pour ${clash.dur} min. Choisissez un autre créneau.`;
+    const a = {id:nid('a'), clientId:cid, lawyerId:f.lawyerId, start, dur:Number(f.dur), type:f.type, lieu:f.lieu, objet:f.objet.trim() || f.type, status:'Planifié', caseId:f.caseId || null};
+    S.appts.push(a);
+    const mail = sendMail('confirmation', client(cid), apptVars(a), ['rendez-vous.ics']);
+    log('Création de rendez-vous', `${cname(cid)}, ${fday(start)} à ${ftime(start)}`);
+    ui.week = mondayOf(parse(start));
+    toast(mail.status === 'Envoyé' ? 'Rendez-vous créé. Confirmation envoyée à ' + mail.to : 'Rendez-vous créé. E-mail non envoyé : ' + mail.error);
+  }});
+}
+
+/* ---------- clients ---------- */
+function clientDue(cid){ return S.invoices.filter(i => i.clientId === cid && i.num && i.status !== 'annulée').reduce((s,i) => s + toUSD(invTotals(i).rest, i.cur, rateNow()), 0); }
+function vClients(){
+  const q = ui.clientQ.toLowerCase();
+  const rows = S.clients.filter(c => !q || (c.name + c.email + c.tel).toLowerCase().includes(q));
+  return head('Clients', `${S.clients.length} fiches · personnes physiques et morales`, '<button class="btn primary" data-act="newClient">Nouveau client</button>') + `
+  <div class="toolbar"><input type="search" id="f-cq" placeholder="Rechercher un nom, un e-mail, un téléphone" value="${esc(ui.clientQ)}" data-change="clientQ" style="width:min(360px,100%)" aria-label="Rechercher un client"></div>
+  <section class="panel"><div class="tablewrap"><table><thead><tr><th>Client</th><th>Type</th><th>Contact</th><th>Dossiers</th><th class="num">Reste dû (≈ USD)</th><th>E-mails</th></tr></thead><tbody>
+  ${rows.map(c => `<tr class="click" data-act="openClient" data-id="${c.id}"><td><b>${esc(c.name)}</b>${c.prospect ? ' <span class="chip warn">Prospect</span>' : ''}${c.rccm ? `<div class="muted mono" style="font-size:12px">${esc(c.rccm)}</div>` : ''}</td><td>${c.type === 'morale' ? 'Personne morale' : 'Personne physique'}</td><td>${esc(c.tel)}<div class="muted">${esc(c.email || 'pas d\'e-mail')}</div></td><td class="mono">${S.cases.filter(d => d.clientId === c.id).length}</td><td class="num">${money(clientDue(c.id),'USD')}</td><td>${c.consent && c.email ? chip('Validé') : '<span class="chip warn">Désactivés</span>'}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Aucun client ne correspond.</td></tr>'}
+  </tbody></table></div></section>`;
+}
+function conflictMatches(name){
+  const n = name.trim().toLowerCase(); if (n.length < 3) return [];
+  const words = n.split(/\s+/).filter(w => w.length > 2);
+  const hit = s => s && words.some(w => s.toLowerCase().includes(w));
+  return [...S.clients.filter(c => hit(c.name)).map(c => `client existant : ${c.name}`), ...S.cases.filter(d => hit(d.adverse)).map(d => `partie adverse dans ${d.ref} : ${d.adverse}`)];
+}
+function newClient(){
+  modal('Nouveau client', `<div class="form">
+    ${field('Type', sel('type', [['physique','Personne physique'],['morale','Personne morale']], 'physique', 'data-live="clientType"'))}
+    ${field('Nom ou raison sociale', inp('name','text','', 'data-live="conflict" autocomplete="off"'))}
+    <div class="full" id="conflictBox"></div>
+    ${field('Téléphone', inp('tel','tel','','placeholder="+243 …"'))}
+    ${field('E-mail', inp('email','email'))}
+    ${field('Adresse', inp('adresse','text'), 'full')}
+    <div class="full form" id="moraleBox" hidden style="grid-template-columns:repeat(2,minmax(0,1fr))">${field('RCCM', inp('rccm','text','','placeholder="CD/KNG/RCCM/…"'))}${field('ID. Nat.', inp('idnat','text'))}</div>
+    <label class="check full"><input type="checkbox" name="consent" checked> Le client accepte de recevoir confirmations, rappels et factures par e-mail.</label>
+    <label class="check full" id="ackBox" hidden><input type="checkbox" name="ack"> J'ai vérifié ces correspondances : il n'y a pas de conflit d'intérêts.</label>
+  </div>`, { submit:'Créer la fiche', onsubmit:f => {
+    if (!f.name.trim()) return 'Indiquez le nom ou la raison sociale.';
+    if (f.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) return 'L\'adresse e-mail n\'est pas valide.';
+    if (conflictMatches(f.name).length && !f.ack) return 'Des correspondances existent : confirmez l\'absence de conflit d\'intérêts avant de créer la fiche.';
+    S.clients.push({id:nid('c'), type:f.type, name:f.name.trim(), tel:f.tel, email:f.email.trim(), adresse:f.adresse, rccm:f.rccm || '', idnat:f.idnat || '', consent:!!f.consent});
+    log('Création de client', f.name.trim()); toast('Fiche client créée');
+  }});
+}
+function openClient(id){
+  const c = client(id);
+  const cs = S.cases.filter(d => d.clientId === id), inv = S.invoices.filter(i => i.clientId === id), ap = S.appts.filter(a => a.clientId === id).sort((a,b) => b.start.localeCompare(a.start));
+  const pays = S.moves.filter(m => m.clientId === id && m.type === 'in');
+  modal(esc(c.name), `<dl class="kv"><dt>Type</dt><dd>${c.type === 'morale' ? 'Personne morale' : 'Personne physique'}</dd><dt>Téléphone</dt><dd>${esc(c.tel || '—')}</dd><dt>E-mail</dt><dd>${esc(c.email || '—')} ${c.consent ? '' : '<span class="chip warn">notifications refusées</span>'}</dd><dt>Adresse</dt><dd>${esc(c.adresse || '—')}</dd>${c.rccm ? `<dt>RCCM / ID. Nat.</dt><dd class="mono">${esc(c.rccm)} · ${esc(c.idnat)}</dd>` : ''}<dt>Reste dû</dt><dd class="mono">${money(clientDue(id),'USD')} (équivalent)</dd></dl>
+    <h3 style="font-size:16px">Dossiers</h3>${cs.length ? cs.map(d => `<div>${chip(d.status)} <span class="mono">${d.ref}</span> ${esc(d.title)}</div>`).join('') : '<div class="empty">Aucun dossier.</div>'}
+    <h3 style="font-size:16px">Rendez-vous</h3>${ap.length ? ap.map(a => `<div>${chip(a.status)} ${fdate(a.start)} à ${ftime(a.start)} · ${esc(a.type)} avec ${esc(uname(a.lawyerId))}</div>`).join('') : '<div class="empty">Aucun rendez-vous.</div>'}
+    <h3 style="font-size:16px">Factures et paiements</h3>${inv.map(i => `<div>${chip(invStatus(i))} <span class="mono">${i.num || 'Brouillon'}</span> · ${money(invTotals(i).total,i.cur)}</div>`).join('') || '<div class="empty">Aucune facture.</div>'}
+    ${pays.map(m => `<div class="muted">Paiement ${m.receipt || ''} du ${fdate(m.date)} : ${money(m.amount,m.cur)} (${m.mode})</div>`).join('')}`, { wide:true });
+}
+
+/* ---------- dossiers ---------- */
+function vDossiers(){
+  const list = visibleCases();
+  return head('Dossiers', me().role === 'avocat' ? 'Vos dossiers et ceux où vous êtes collaborateur' : `${list.length} affaires suivies par le cabinet`, ['admin','avocat','secretaire'].includes(me().role) ? '<button class="btn primary" data-act="newCase">Nouveau dossier</button>' : '') + `
+  <section class="panel"><div class="tablewrap"><table><thead><tr><th>Référence</th><th>Intitulé</th><th>Matière</th><th>Juridiction · n° de rôle</th><th>Avocat</th><th>Statut</th><th class="num">Temps non facturé</th></tr></thead><tbody>
+  ${list.map(d => { const unb = d.time.filter(t => t.bill && !t.billed).reduce((s,t) => s + t.min, 0);
+    return `<tr class="click" data-act="openCase" data-id="${d.id}"><td class="mono">${d.ref}</td><td><b>${esc(d.title)}</b><div class="muted">${esc(cname(d.clientId))}</div></td><td>${esc(d.matiere)}</td><td>${esc(d.juridiction || '—')}<div class="muted mono">${esc(d.rg)}</div></td><td>${esc(uname(d.lawyerId))}</td><td>${chip(d.status)}</td><td class="num">${unb ? (unb/60).toLocaleString('fr-FR',{maximumFractionDigits:2}) + ' h' : '—'}</td></tr>`; }).join('')}
+  </tbody></table></div></section>`;
+}
+const MATIERES = ['Civil','Commercial','Pénal','Social','Foncier','OHADA','Conseil','Administratif','Famille'];
+function newCase(){
+  const n = S.cases.length + 40;
+  modal('Nouveau dossier', `<div class="form">
+    ${field('Client', sel('clientId', S.clients.map(c => [c.id,c.name]), S.clients[0].id), 'full')}
+    ${field('Intitulé', inp('title','text','','placeholder="Ex. : Société X c/ Société Y"'), 'full')}
+    ${field('Partie adverse', inp('adverse','text','','data-live="adverse"'), 'full', 'Contrôlée contre la liste des clients du cabinet.')}
+    <div class="full" id="advBox"></div>
+    ${field('Matière', sel('matiere', MATIERES, 'Civil'))}
+    ${field('Avocat responsable', sel('lawyerId', lawyers().map(u => [u.id,u.name]), me().role === 'avocat' ? S.me : 'u1'))}
+    ${field('Juridiction', inp('juridiction','text'))}
+    ${field('N° de rôle (RG)', inp('rg','text','','placeholder="RC 0000"'))}
+    ${field('Convention d\'honoraires', sel('feeType', ['Forfait','Taux horaire','Provision + résultat','Abonnement mensuel'], 'Forfait'))}
+    ${field('Montant', inp('feeAmount','number','','min="0" step="0.01"'))}
+    ${field('Devise', sel('feeCur', ['USD','CDF'], 'USD'))}
+  </div>`, { submit:'Ouvrir le dossier', onsubmit:f => {
+    if (!f.title.trim()) return 'Indiquez l\'intitulé du dossier.';
+    const ref = 'LEX-' + TODAY.getFullYear() + '-' + String(n + 7).padStart(4,'0');
+    S.cases.push({id:nid('d'), ref, title:f.title.trim(), clientId:f.clientId, adverse:f.adverse, matiere:f.matiere, juridiction:f.juridiction, rg:f.rg, status:'Ouvert', lawyerId:f.lawyerId, team:[], fee:{type:f.feeType, cur:f.feeCur, amount:Number(f.feeAmount) || 0}, opened:T, events:[], time:[]});
+    log('Ouverture de dossier', ref + ' ' + f.title.trim()); toast('Dossier ' + ref + ' ouvert');
+  }});
+}
+function openCase(id){
+  const d = caseOf(id);
+  const unb = d.time.filter(t => t.bill && !t.billed);
+  modal(`<span class="mono" style="font-size:14px;font-family:var(--f-mono)">${d.ref}</span><br>${esc(d.title)}`, `
+    <dl class="kv"><dt>Client</dt><dd>${esc(cname(d.clientId))}</dd><dt>Partie adverse</dt><dd>${esc(d.adverse || '—')}</dd><dt>Matière</dt><dd>${esc(d.matiere)}</dd><dt>Juridiction</dt><dd>${esc(d.juridiction || '—')} <span class="mono">${esc(d.rg)}</span></dd><dt>Avocat</dt><dd>${esc(uname(d.lawyerId))}${d.team.length ? ' avec ' + d.team.map(uname).join(', ') : ''}</dd><dt>Honoraires</dt><dd>${esc(d.fee.type)} · ${money(d.fee.amount,d.fee.cur)}${d.fee.type === 'Taux horaire' ? ' / h' : ''}</dd>
+    <dt>Statut</dt><dd>${sel('caseStatus', ['Ouvert','En cours','En délibéré','Clôturé','Archivé'], d.status, `data-change="caseStatus" data-id="${d.id}"`)}</dd></dl>
+    <h3 style="font-size:16px">Journal du dossier</h3>
+    ${d.events.length ? `<div class="list">${d.events.slice().sort((a,b) => b.date.localeCompare(a.date)).map(e => `<div class="row"><span class="t">${parse(e.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span><div class="main">${esc(e.text)}</div>${chip(e.type)}</div>`).join('')}</div>` : '<div class="empty">Aucun événement.</div>'}
+    <h3 style="font-size:16px">Temps passé</h3>
+    <div class="tablewrap"><table><thead><tr><th>Date</th><th>Avocat</th><th>Description</th><th class="num">Durée</th><th>État</th></tr></thead><tbody>
+      ${d.time.map(t => `<tr><td class="mono">${fdate(t.date)}</td><td>${esc(uname(t.userId))}</td><td>${esc(t.text)}</td><td class="num">${(t.min/60).toLocaleString('fr-FR',{maximumFractionDigits:2})} h</td><td>${!t.bill ? '<span class="chip">Non facturable</span>' : t.billed ? chip('Payée').replace('Payée','Facturé') : '<span class="chip warn">À facturer</span>'}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Aucun temps saisi.</td></tr>'}
+    </tbody></table></div>
+    <div class="form" style="grid-template-columns:120px 90px minmax(0,1fr)">
+      ${field('Date', inp('tdate','date',T))}${field('Durée (min)', inp('tmin','number','60','min="5" step="5"'))}${field('Description', inp('ttext','text','','placeholder="Ex. : rédaction de la requête"'))}
+      <label class="check full"><input type="checkbox" name="tbill" checked> Facturable</label>
+    </div>`,
+    { wide:true, submit:'Ajouter le temps', extra: unb.length && d.fee.type === 'Taux horaire' ? `<button type="button" class="btn" data-act="billTime" data-id="${d.id}">Facturer ${(unb.reduce((s,t) => s + t.min,0)/60).toLocaleString('fr-FR',{maximumFractionDigits:2})} h non facturées</button>` : '',
+      onsubmit:f => { if (!f.ttext.trim()) return 'Décrivez le travail effectué.'; d.time.push({id:nid('t'), date:f.tdate, userId: me().role === 'avocat' || isAdmin() ? S.me : d.lawyerId, min:Number(f.tmin) || 0, text:f.ttext.trim(), bill:!!f.tbill, billed:false}); log('Saisie de temps', d.ref + ', ' + f.tmin + ' min'); toast('Temps ajouté au dossier'); render(); openCase(id); return 'chain'; } });
+}
+function billTime(id){
+  const d = caseOf(id); const unb = d.time.filter(t => t.bill && !t.billed); const h = unb.reduce((s,t) => s + t.min, 0) / 60;
+  const inv = {id:nid('i'), num:null, clientId:d.clientId, caseId:d.id, date:T, due:dOnly(15), cur:d.fee.cur, rate:rateNow(), tva:S.settings.tva, status:'brouillon', lines:[{lib:`Temps passé du ${fdate(unb[0].date)} au ${fdate(unb[unb.length-1].date)} : ${h.toLocaleString('fr-FR',{maximumFractionDigits:2})} h`, type:'Honoraires', qty:r2(h), pu:d.fee.amount}]};
+  S.invoices.push(inv); unb.forEach(t => t.billed = true);
+  log('Facturation du temps', d.ref); closeModal(); ui.view = 'factures'; render(); toast('Brouillon de facture créé : vérifiez-le puis émettez-le');
+}
+
+/* ---------- factures ---------- */
+function vFactures(){
+  const all = S.invoices.slice().sort((a,b) => (b.num || 'ZZZ').localeCompare(a.num || 'ZZZ'));
+  const F = { all:'Toutes', open:'À encaisser', overdue:'Échues', draft:'Brouillons', paid:'Payées' };
+  const pick = i => { const s = invStatus(i); return ui.invFilter === 'all' || (ui.invFilter === 'open' && ['Émise','Partiellement payée','Échue','Partielle, échue'].includes(s)) || (ui.invFilter === 'overdue' && s.includes('chue')) || (ui.invFilter === 'draft' && s === 'Brouillon') || (ui.invFilter === 'paid' && s === 'Payée'); };
+  const canWrite = ['admin','avocat'].includes(me().role), canCash = ['admin','caissier'].includes(me().role);
+  return head('Factures et honoraires', 'Numérotation continue, PDF à l\'en-tête du cabinet, paiement en USD ou en CDF', canWrite ? '<button class="btn primary" data-act="newInvoice">Nouvelle facture</button>' : '') + `
+  <div class="tabs" role="tablist">${Object.entries(F).map(([k,l]) => `<button role="tab" aria-selected="${ui.invFilter === k}" data-act="invFilter" data-f="${k}">${l}</button>`).join('')}</div>
+  <section class="panel"><div class="tablewrap"><table><thead><tr><th>Numéro</th><th>Client · dossier</th><th>Échéance</th><th class="num">Total</th><th class="num">Reste dû</th><th>Statut</th><th></th></tr></thead><tbody>
+  ${all.filter(pick).map(i => { const t = invTotals(i), s = invStatus(i);
+    return `<tr><td class="mono">${i.num || '<span class="muted">Brouillon</span>'}<div class="muted" style="font-size:12px">${fdate(i.date)}</div></td><td><b>${esc(cname(i.clientId))}</b><div class="muted mono" style="font-size:12px">${i.caseId ? caseOf(i.caseId).ref : 'sans dossier'}</div></td><td>${fdate(i.due)}</td><td class="num">${money(t.total,i.cur)}</td><td class="num">${money(t.rest,i.cur)}</td><td>${chip(s)}</td>
+    <td><div class="actions" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" data-act="viewInvoice" data-id="${i.id}">Voir</button>${s === 'Brouillon' && canWrite ? `<button class="btn sm" data-act="emitInvoice" data-id="${i.id}">Émettre</button>` : ''}${i.num && t.rest > 0 && i.status !== 'annulée' && canCash ? `<button class="btn sm" data-act="cashIn" data-inv="${i.id}">Encaisser</button>` : ''}</div></td></tr>`; }).join('') || '<tr><td colspan="7" class="empty">Aucune facture dans cette liste.</td></tr>'}
+  </tbody></table></div></section>`;
+}
+function newInvoice(pre){
+  const lines = [0,1,2,3].map(k => `<input class="lib" type="text" name="lib${k}" aria-label="Libellé ligne ${k+1}" placeholder="${k === 0 ? 'Ex. : Honoraires, rédaction du contrat' : ''}">${sel('type'+k, ['Honoraires','Frais de dossier','Débours','Consultation'], 'Honoraires', `aria-label="Type ligne ${k+1}"`)}<input type="number" name="qty${k}" value="1" min="0" step="0.25" aria-label="Quantité ligne ${k+1}"><input type="number" name="pu${k}" min="0" step="0.01" aria-label="Prix unitaire ligne ${k+1}" placeholder="Prix unitaire">`).join('');
+  modal('Nouvelle facture', `<div class="form">
+    ${field('Client', sel('clientId', S.clients.map(c => [c.id,c.name]), pre?.clientId || S.clients[0].id, 'data-live="invClient"'), 'full')}
+    ${field('Dossier', sel('caseId', [['','Sans dossier']], ''), 'full')}
+    ${field('Devise', sel('cur', ['USD','CDF'], 'USD'))}
+    ${field('Échéance', sel('dueDays', [[0,'À réception'],[15,'15 jours'],[30,'30 jours']], 15))}
+  </div>
+  <div class="lines"><span class="lh">Libellé</span><span class="lh">Type</span><span class="lh">Qté</span><span class="lh">Prix unit.</span>${lines}</div>
+  <label class="check"><input type="checkbox" name="tva" ${S.settings.tva ? 'checked' : ''}> Appliquer la TVA de 16 % (hors débours)</label>
+  <div class="note">Taux du jour mémorisé sur la facture : 1 $ = ${num(rateNow(),0)} FC. La facture reste un brouillon modifiable jusqu'à son émission.</div>`,
+  { wide:true, submit:'Enregistrer le brouillon', onsubmit:f => {
+    const L = [0,1,2,3].map(k => ({lib:f['lib'+k].trim(), type:f['type'+k], qty:Number(f['qty'+k]) || 0, pu:Number(f['pu'+k]) || 0})).filter(l => l.lib && l.qty > 0 && l.pu > 0);
+    if (!L.length) return 'Ajoutez au moins une ligne avec un libellé, une quantité et un prix.';
+    S.invoices.push({id:nid('i'), num:null, clientId:f.clientId, caseId:f.caseId || null, date:T, due:dOnly(Number(f.dueDays)), cur:f.cur, rate:rateNow(), tva:!!f.tva, status:'brouillon', lines:L});
+    log('Brouillon de facture', cname(f.clientId)); ui.invFilter = 'all'; toast('Brouillon enregistré');
+  }});
+}
+function emitInvoice(id){
+  const i = S.invoices.find(x => x.id === id);
+  i.num = 'FAC-' + TODAY.getFullYear() + '-' + String(++S.counters.fac).padStart(5,'0'); i.status = 'émise'; i.date = T; i.rate = rateNow();
+  const t = invTotals(i);
+  const m = sendMail('facture', client(i.clientId), Object.assign(baseVars(), {client:cname(i.clientId), numero:i.num, montant:money(t.total,i.cur), echeance:fdate(i.due)}), [i.num + '.pdf']);
+  log('Émission de facture', i.num + ', ' + money(t.total,i.cur));
+  render(); toast(i.num + ' émise. ' + (m.status === 'Envoyé' ? 'Envoyée à ' + m.to : 'E-mail non envoyé : ' + m.error));
+}
+function invoiceSheet(i){
+  const t = invTotals(i), c = client(i.clientId), st = S.settings;
+  return `<div class="sheet"><div class="top"><div><h3>${esc(st.cabinet)}</h3><div class="small">${esc(st.barreau)}<br>${esc(st.adresse)}<br>RCCM ${esc(st.rccm)} · ID. Nat. ${esc(st.idnat)} · NIF ${esc(st.nif)}<br>${esc(st.tel)} · ${esc(st.email)}</div></div>
+    <div style="text-align:right"><b style="font-size:16px">${i.status === 'annulée' ? 'FACTURE ANNULÉE' : i.num ? 'NOTE D\'HONORAIRES' : 'BROUILLON'}</b><div class="mono">${i.num || '—'}</div><div class="small">Date : ${fdate(i.date)}<br>Échéance : ${fdate(i.due)}</div></div></div>
+    <div style="margin-bottom:16px"><div class="small">Facturé à</div><b>${esc(c.name)}</b><div class="small">${esc(c.adresse)}${c.rccm ? '<br>RCCM ' + esc(c.rccm) : ''}</div>${i.caseId ? `<div class="small" style="margin-top:6px">Dossier ${caseOf(i.caseId).ref} · ${esc(caseOf(i.caseId).title)} ${caseOf(i.caseId).rg ? '· ' + esc(caseOf(i.caseId).rg) : ''}</div>` : ''}</div>
+    <table><thead><tr><th>Désignation</th><th>Type</th><th class="num">Qté</th><th class="num">Prix unit.</th><th class="num">Montant</th></tr></thead><tbody>
+    ${i.lines.map(l => `<tr><td>${esc(l.lib)}</td><td>${esc(l.type)}</td><td class="num">${num(l.qty, l.qty % 1 ? 2 : 0)}</td><td class="num">${money(l.pu,i.cur)}</td><td class="num">${money(l.qty*l.pu,i.cur)}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="4">Sous-total</td><td class="num">${money(t.sub,i.cur)}</td></tr>${i.tva ? `<tr><td colspan="4">TVA 16 %</td><td class="num">${money(t.tax,i.cur)}</td></tr>` : ''}<tr><td colspan="4">Total</td><td class="num">${money(t.total,i.cur)}</td></tr><tr><td colspan="4">Déjà payé</td><td class="num">${money(t.paid,i.cur)}</td></tr><tr><td colspan="4">Reste à payer</td><td class="num">${money(t.rest,i.cur)}</td></tr></tfoot></table>
+    <p class="small" style="margin-top:14px">${i.cur === 'USD' ? `Contre-valeur indicative : ${money(t.total*i.rate,'CDF')} au taux de ${num(i.rate,0)} FC pour 1 $.` : `Contre-valeur indicative : ${money(t.total/i.rate,'USD')} au taux de ${num(i.rate,0)} FC pour 1 $.`}<br>Paiement : espèces au cabinet, virement ${esc(st.banque)} ou mobile money.</p></div>`;
+}
+function viewInvoice(id){
+  const i = S.invoices.find(x => x.id === id), t = invTotals(i), can = isAdmin();
+  modal(i.num || 'Brouillon de facture', invoiceSheet(i), { wide:true, extra:
+    (i.num && i.status !== 'annulée' ? `<button type="button" class="btn" data-act="resendInvoice" data-id="${i.id}">Envoyer par e-mail</button>` : '') +
+    (i.num && i.status !== 'annulée' && can && t.paid === 0 ? `<button type="button" class="btn danger" data-act="cancelInvoice" data-id="${i.id}">Annuler par un avoir</button>` : '') +
+    (i.status === 'brouillon' ? `<button type="button" class="btn danger" data-act="deleteDraft" data-id="${i.id}">Supprimer le brouillon</button>` : '') });
+}
+
+/* ---------- caisse ---------- */
+function vCaisse(){
+  const b = balances(), s = S.session, canCash = ['admin','caissier'].includes(me().role);
+  const pend = S.moves.filter(m => m.status === 'pending');
+  const recent = S.moves.slice().sort((a,b) => b.date.localeCompare(a.date));
+  const label = m => m.type === 'in' ? 'Encaissement' : m.type === 'out' ? 'Décaissement' : m.type === 'fx' ? 'Change' : 'Écart de caisse';
+  const amt = m => m.type === 'fx' ? `−${money(m.amount,m.cur)}<br>+${money(m.amountTo,m.to)}` : `${m.type === 'out' || (m.type === 'adj' && m.amount < 0) ? '−' : '+'}${money(Math.abs(m.amount),m.cur)}`;
+  return head('Caisse', s.open ? `Session ouverte le ${fdate(s.openedAt)} à ${ftime(s.openedAt)} par ${esc(uname(s.by))} · fonds d'ouverture ${money(s.fund.USD,'USD')} et ${money(s.fund.CDF,'CDF')}` : 'Session clôturée : ouvrez-la pour enregistrer des opérations',
+    canCash ? (s.open ? `<button class="btn" data-act="fx">Change</button><button class="btn" data-act="cashOut">Décaisser</button><button class="btn primary" data-act="cashIn">Encaisser</button><button class="btn" data-act="closeCash">Clôturer la caisse</button>` : '<button class="btn primary" data-act="openCash">Ouvrir la caisse</button>') : '') + `
+  <div class="kpis">
+    <div class="kpi"><small>Espèces USD</small><strong>${money(b.USD,'USD')}</strong><span>solde théorique</span></div>
+    <div class="kpi"><small>Espèces CDF</small><strong>${money(b.CDF,'CDF')}</strong><span>≈ ${money(b.CDF/rateNow(),'USD')}</span></div>
+    <div class="kpi"><small>Banque</small><strong>${money(b.bank,'USD')}</strong><span>mouvements depuis le ${fdate(S.cash.since)}</span></div>
+    <div class="kpi"><small>Mobile money</small><strong>${money(b.momo,'USD')}</strong><span>M-Pesa, Orange Money, Airtel Money</span></div>
+  </div>
+  ${pend.length ? `<section class="panel"><div class="ph"><h2>Décaissements à valider</h2><span class="muted">au-delà de ${money(S.settings.seuil,'USD')}</span></div><div class="pbody"><div class="list">
+    ${pend.map(m => `<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><div class="main"><b>${money(m.amount,m.cur)} · ${esc(m.label)}</b><div class="sub">${esc(m.cat)} · ${esc(m.benef || '')} · demandé par ${esc(uname(m.by))} le ${fdate(m.date)} à ${ftime(m.date)}</div></div><div class="actions">${isAdmin() ? `<button class="btn sm" data-act="reject" data-id="${m.id}">Refuser</button><button class="btn sm primary" data-act="approve" data-id="${m.id}">Valider</button>` : '<span class="chip warn">En attente de l\'administrateur</span>'}</div></div>`).join('')}
+  </div></div></section>` : ''}
+  <section class="panel"><div class="ph"><h2>Opérations</h2><span class="muted">Aucune suppression : une erreur se corrige par une opération inverse.</span></div><div class="tablewrap"><table><thead><tr><th>Date</th><th>Opération</th><th>Libellé</th><th>Mode</th><th class="num">Montant</th><th class="num">Taux</th><th>Pièce</th></tr></thead><tbody>
+  ${recent.map(m => `<tr><td class="mono">${fdate(m.date)}<div class="muted">${ftime(m.date)}</div></td><td>${label(m)}${m.status === 'pending' ? ' ' + chip('En attente') : m.status === 'rejected' ? ' <span class="chip">Refusé</span>' : ''}</td><td>${esc(m.label)}${m.clientId ? `<div class="muted">${esc(cname(m.clientId))}</div>` : ''}</td><td>${esc(m.type === 'fx' || m.type === 'adj' ? 'Espèces' : m.mode)}${m.ref ? `<div class="muted mono" style="font-size:12px">${esc(m.ref)}</div>` : ''}</td><td class="num">${amt(m)}</td><td class="num">${num(m.rate,0)}</td><td class="mono">${m.receipt ? `<button class="btn sm" data-act="receipt" data-id="${m.id}">${m.receipt}</button>` : esc(m.piece || '—')}</td></tr>`).join('')}
+  </tbody></table></div></section>
+  ${S.closedSessions.length ? `<section class="panel"><div class="ph"><h2>Sessions clôturées</h2></div><div class="tablewrap"><table><thead><tr><th>Clôture</th><th>Par</th><th class="num">Compté USD</th><th class="num">Écart USD</th><th class="num">Compté CDF</th><th class="num">Écart CDF</th><th>Motif</th></tr></thead><tbody>${S.closedSessions.map(c => `<tr><td class="mono">${fdate(c.closedAt)} ${ftime(c.closedAt)}</td><td>${esc(uname(c.by))}</td><td class="num">${money(c.count.USD,'USD')}</td><td class="num">${money(c.ecart.USD,'USD')}</td><td class="num">${money(c.count.CDF,'CDF')}</td><td class="num">${money(c.ecart.CDF,'CDF')}</td><td>${esc(c.motif || '—')}</td></tr>`).join('')}</tbody></table></div></section>` : ''}`;
+}
+function openInvoicesOf(cid){ return S.invoices.filter(i => i.clientId === cid && i.num && i.status !== 'annulée' && invTotals(i).rest > 0); }
+function cashIn(invId){
+  if (!S.session.open){ toast('Ouvrez la caisse avant d\'encaisser.'); return; }
+  const inv = invId ? S.invoices.find(i => i.id === invId) : null;
+  const cid = inv ? inv.clientId : S.clients[0].id;
+  modal('Encaisser un paiement', `<div class="form">
+    ${field('Client', sel('clientId', S.clients.map(c => [c.id,c.name]), cid, 'data-live="payClient"'), 'full')}
+    ${field('Facture réglée', sel('invoiceId', [], ''), 'full')}
+    ${field('Devise reçue', sel('cur', ['USD','CDF'], inv?.cur || 'USD', 'data-live="payCalc"'))}
+    ${field('Montant reçu', inp('amount','number', inv ? invTotals(inv).rest : '', 'min="0" step="0.01" data-live="payCalc"'))}
+    ${field('Mode', sel('mode', MODES, 'Espèces'))}
+    ${field('Référence', inp('ref','text','','placeholder="N° de virement, de chèque ou de transaction"'))}
+    ${field('Taux appliqué (FC pour 1 $)', inp('rate','number', rateNow(), 'min="1" step="1" data-live="payCalc"'))}
+    <div class="full" id="payInfo"></div>
+  </div>`, { submit:'Encaisser et émettre le reçu', onsubmit:f => {
+    const amount = Number(f.amount); if (!(amount > 0)) return 'Indiquez un montant reçu supérieur à zéro.';
+    const rate = Number(f.rate) || rateNow();
+    const i = f.invoiceId ? S.invoices.find(x => x.id === f.invoiceId) : null;
+    let amountInv = 0;
+    if (i){ amountInv = i.cur === f.cur ? amount : i.cur === 'USD' ? r2(amount/rate) : r2(amount*rate); const rest = invTotals(i).rest; if (amountInv > rest + 0.01) return `Le montant dépasse le reste dû (${money(rest,i.cur)}). Encaissez l'excédent comme provision sans facture.`; }
+    const m = {id:nid('m'), date:nowIso(), type:'in', cur:f.cur, amount, rate, mode:f.mode, ref:f.ref, clientId:f.clientId, invoiceId:i?.id || null, amountInv, label: i ? 'Règlement ' + i.num : 'Provision sur honoraires', receipt:'RC-' + TODAY.getFullYear() + '-' + String(++S.counters.rc).padStart(4,'0'), status:'ok', by:S.me};
+    S.moves.push(m);
+    sendMail('recu', client(f.clientId), Object.assign(baseVars(), {client:cname(f.clientId), montant:money(amount,f.cur), mode:f.mode, numero:m.receipt}), [m.receipt + '.pdf']);
+    log('Encaissement', `${m.receipt}, ${money(amount,f.cur)}${i ? ' sur ' + i.num : ''}`);
+    render(); showReceipt(m.id); return 'chain';
+  }});
+}
+function showReceipt(id){
+  const m = S.moves.find(x => x.id === id), i = m.invoiceId ? S.invoices.find(x => x.id === m.invoiceId) : null, st = S.settings;
+  modal('Reçu ' + m.receipt, `<div class="sheet"><div class="top"><div><h3>${esc(st.cabinet)}</h3><div class="small">${esc(st.adresse)} · ${esc(st.tel)}</div></div><div style="text-align:right"><b>REÇU DE PAIEMENT</b><div class="mono">${m.receipt}</div><div class="small">${fdate(m.date)} à ${ftime(m.date)}</div></div></div>
+    <p>Reçu de <b>${esc(cname(m.clientId))}</b> la somme de <b class="mono">${money(m.amount,m.cur)}</b> par ${esc(m.mode.toLowerCase())}${m.ref ? ' (réf. ' + esc(m.ref) + ')' : ''}.</p>
+    <p>${i ? `Imputé sur la facture ${i.num} : ${money(m.amountInv,i.cur)}${m.cur !== i.cur ? ` au taux de ${num(m.rate,0)} FC pour 1 $` : ''}. Reste dû : ${money(invTotals(i).rest,i.cur)}.` : 'Enregistré comme provision sur honoraires, à imputer sur une prochaine facture.'}</p>
+    <p class="small">Encaissé par ${esc(uname(m.by))}. Une copie a été envoyée par e-mail au client lorsque son adresse est connue.</p></div>`);
+}
+function cashOut(){
+  if (!S.session.open){ toast('Ouvrez la caisse avant de décaisser.'); return; }
+  modal('Décaisser', `<div class="form">
+    ${field('Catégorie', sel('cat', CATS.map(c => [c[0], c[0] + ' (' + c[1] + ')']), 'Transport'))}
+    ${field('Bénéficiaire', inp('benef','text'))}
+    ${field('Libellé', inp('label','text','','placeholder="Ex. : taxi pour l\'audience RC 4471"'), 'full')}
+    ${field('Devise', sel('cur', ['USD','CDF'], 'USD'))}
+    ${field('Montant', inp('amount','number','','min="0" step="0.01"'))}
+    ${field('Mode', sel('mode', MODES, 'Espèces'))}
+    ${field('N° de pièce justificative', inp('piece','text','','placeholder="Facture fournisseur, bon…"'))}
+  </div><div class="note">Au-delà de ${money(S.settings.seuil,'USD')} (ou l'équivalent en CDF), la sortie attend la validation de l'administrateur.</div>`,
+  { submit:'Enregistrer la sortie', onsubmit:f => {
+    const amount = Number(f.amount); if (!(amount > 0)) return 'Indiquez un montant supérieur à zéro.';
+    if (!f.label.trim()) return 'Indiquez le motif de la dépense.';
+    const b = balances();
+    if (f.mode === 'Espèces' && amount > b[f.cur]) return `Solde insuffisant : la caisse ${f.cur} contient ${money(b[f.cur],f.cur)}.`;
+    const big = toUSD(amount,f.cur,rateNow()) > S.settings.seuil && !isAdmin();
+    S.moves.push({id:nid('m'), date:nowIso(), type:'out', cur:f.cur, amount, rate:rateNow(), mode:f.mode, cat:f.cat, benef:f.benef, label:f.label.trim(), piece:f.piece, status: big ? 'pending' : 'ok', by:S.me});
+    log('Décaissement', `${money(amount,f.cur)} · ${f.label.trim()}${big ? ' (en attente de validation)' : ''}`);
+    toast(big ? 'Sortie enregistrée, en attente de validation' : 'Sortie enregistrée');
+  }});
+}
+function fxModal(){
+  modal('Opération de change', `<div class="form">
+    ${field('Sens', sel('dir', [['USD','USD vers CDF'],['CDF','CDF vers USD']], 'USD', 'data-live="fxCalc"'))}
+    ${field('Taux (FC pour 1 $)', inp('rate','number', rateNow(), 'min="1" data-live="fxCalc"'))}
+    ${field('Montant cédé', inp('amount','number','','min="0" step="0.01" data-live="fxCalc"'), 'full')}
+    <div class="full" id="fxInfo"></div></div>`, { submit:'Enregistrer le change', onsubmit:f => {
+    const a = Number(f.amount), r = Number(f.rate); if (!(a > 0) || !(r > 0)) return 'Indiquez le montant et le taux.';
+    const to = f.dir === 'USD' ? 'CDF' : 'USD', got = f.dir === 'USD' ? r2(a*r) : r2(a/r);
+    if (a > balances()[f.dir]) return 'Solde ' + f.dir + ' insuffisant.';
+    S.moves.push({id:nid('m'), date:nowIso(), type:'fx', cur:f.dir, amount:a, to, amountTo:got, rate:r, mode:'Espèces', label:`Change ${f.dir} vers ${to}`, status:'ok', by:S.me});
+    log('Change', `${money(a,f.dir)} contre ${money(got,to)}`); toast('Change enregistré');
+  }});
+}
+function closeCash(){
+  const b = balances();
+  modal('Clôturer la caisse', `<p class="muted" style="margin:0">Comptez les espèces présentes dans la caisse et saisissez les montants réels.</p><div class="form">
+    ${field('Solde théorique USD', `<div class="mono">${money(b.USD,'USD')}</div>`)}${field('Compté USD', inp('cUSD','number', r2(b.USD), 'step="0.01" data-live="ecart"'))}
+    ${field('Solde théorique CDF', `<div class="mono">${money(b.CDF,'CDF')}</div>`)}${field('Compté CDF', inp('cCDF','number', Math.round(b.CDF), 'step="1" data-live="ecart"'))}
+    <div class="full" id="ecartInfo"></div>
+    ${field('Motif de l\'écart', inp('motif','text','','placeholder="Obligatoire si un écart est constaté"'), 'full')}
+  </div>`, { submit:'Clôturer', onsubmit:f => {
+    const cnt = {USD:Number(f.cUSD), CDF:Number(f.cCDF)}, ec = {USD:r2(cnt.USD - b.USD), CDF:Math.round(cnt.CDF - b.CDF)};
+    if ((ec.USD || ec.CDF) && !f.motif.trim()) return 'Un écart est constaté : indiquez son motif pour clôturer.';
+    ['USD','CDF'].forEach(c => { if (ec[c]) S.moves.push({id:nid('m'), date:nowIso(), type:'adj', cur:c, amount:ec[c], rate:rateNow(), mode:'Espèces', label:'Écart de clôture : ' + f.motif.trim(), status:'ok', by:S.me}); });
+    S.closedSessions.unshift({closedAt:nowIso(), by:S.me, count:cnt, ecart:ec, motif:f.motif.trim()});
+    S.session.open = false;
+    log('Clôture de caisse', `Écart ${money(ec.USD,'USD')} / ${money(ec.CDF,'CDF')}`); toast('Caisse clôturée');
+  }});
+}
+function openCash(){
+  const b = balances();
+  modal('Ouvrir la caisse', `<div class="form">${field('Fonds compté USD', inp('fUSD','number', r2(b.USD), 'step="0.01"'))}${field('Fonds compté CDF', inp('fCDF','number', Math.round(b.CDF), 'step="1"'))}</div><div class="note">Solde de la dernière clôture : ${money(b.USD,'USD')} et ${money(b.CDF,'CDF')}.</div>`,
+  { submit:'Ouvrir', onsubmit:f => {
+    const fund = {USD:Number(f.fUSD), CDF:Number(f.fCDF)};
+    if (Math.abs(fund.USD - b.USD) > 0.004 || Math.abs(fund.CDF - b.CDF) > 0.5) return 'Le fonds compté diffère du solde de clôture. Vérifiez le comptage : l\'écart doit être justifié à la clôture précédente.';
+    S.session = {open:true, openedAt:nowIso(), by:S.me, fund}; log('Ouverture de caisse', `${money(fund.USD,'USD')} / ${money(fund.CDF,'CDF')}`); toast('Caisse ouverte');
+  }});
+}
+
+/* ---------- comptabilité ---------- */
+function vCompta(){
+  const E = entries();
+  const tabs = {journal:'Journal', balance:'Balance', resultat:'Résultat'};
+  let body = '';
+  if (ui.comptaTab === 'journal'){
+    let tD = 0, tC = 0;
+    body = `<div class="tablewrap"><table><thead><tr><th>Date</th><th>Jnl</th><th>Pièce</th><th>Compte</th><th>Libellé</th><th class="num">Débit $</th><th class="num">Crédit $</th></tr></thead><tbody>
+    ${E.map(e => e.lines.map((l,k) => { tD += l[1]; tC += l[2]; return `<tr${k === 0 ? ' style="border-top:2px solid var(--line)"' : ''}><td class="mono">${k === 0 ? fdate(e.date) : ''}</td><td class="mono">${k === 0 ? e.jnl : ''}</td><td class="mono">${k === 0 ? esc(e.piece) : ''}</td><td class="mono">${l[0]}</td><td>${k === 0 ? esc(e.lib) : `<span class="muted">${esc(ACC[l[0]] || '')}</span>`}</td><td class="num">${l[1] ? num(l[1]) : ''}</td><td class="num">${l[2] ? num(l[2]) : ''}</td></tr>`; }).join('')).join('')}
+    </tbody><tfoot><tr><td colspan="5">Totaux</td><td class="num">${num(tD)}</td><td class="num">${num(tC)}</td></tr></tfoot></table></div>`;
+  } else {
+    const agg = {};
+    E.forEach(e => e.lines.forEach(l => { agg[l[0]] = agg[l[0]] || {d:0,c:0}; agg[l[0]].d += l[1]; agg[l[0]].c += l[2]; }));
+    const keys = Object.keys(agg).sort();
+    if (ui.comptaTab === 'balance'){
+      let D = 0, C = 0, SD = 0, SC = 0;
+      body = `<div class="tablewrap"><table><thead><tr><th>Compte</th><th>Intitulé</th><th class="num">Débit</th><th class="num">Crédit</th><th class="num">Solde débiteur</th><th class="num">Solde créditeur</th></tr></thead><tbody>
+      ${keys.map(k => { const a = agg[k], s = a.d - a.c; D += a.d; C += a.c; if (s > 0) SD += s; else SC -= s; return `<tr><td class="mono">${k}</td><td>${esc(ACC[k] || '')}</td><td class="num">${num(a.d)}</td><td class="num">${num(a.c)}</td><td class="num">${s > 0.004 ? num(s) : ''}</td><td class="num">${s < -0.004 ? num(-s) : ''}</td></tr>`; }).join('')}
+      </tbody><tfoot><tr><td colspan="2">Totaux</td><td class="num">${num(D)}</td><td class="num">${num(C)}</td><td class="num">${num(SD)}</td><td class="num">${num(SC)}</td></tr></tfoot></table></div>
+      <div class="note ${Math.abs(D - C) < 0.05 ? 'good' : 'crit'}" style="margin:12px 16px 16px">${Math.abs(D - C) < 0.05 ? 'La balance est équilibrée : total des débits égal au total des crédits.' : 'Déséquilibre de ' + num(D - C) + ' $ : vérifiez les écritures manuelles.'}</div>`;
+    } else {
+      const prod = keys.filter(k => k[0] === '7').map(k => [k, agg[k].c - agg[k].d]);
+      const ch = keys.filter(k => k[0] === '6').map(k => [k, agg[k].d - agg[k].c]);
+      const P = prod.reduce((s,x) => s + x[1], 0), Cg = ch.reduce((s,x) => s + x[1], 0);
+      body = `<div class="grid2" style="padding:16px"><div><h3 style="font-size:16px;margin-bottom:6px">Produits</h3><table><tbody>${prod.map(x => `<tr><td class="mono">${x[0]}</td><td>${esc(ACC[x[0]])}</td><td class="num">${num(x[1])}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="2">Total des produits</td><td class="num">${num(P)}</td></tr></tfoot></table></div>
+        <div><h3 style="font-size:16px;margin-bottom:6px">Charges</h3><table><tbody>${ch.map(x => `<tr><td class="mono">${x[0]}</td><td>${esc(ACC[x[0]])}</td><td class="num">${num(x[1])}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="2">Total des charges</td><td class="num">${num(Cg)}</td></tr></tfoot></table></div></div>
+        <div class="note ${P - Cg >= 0 ? 'good' : 'crit'}" style="margin:0 16px 16px">Résultat de la période : <b class="mono">${num(P - Cg)} $</b> (${P - Cg >= 0 ? 'bénéfice' : 'perte'}), hors amortissements et impôts.</div>`;
+    }
+  }
+  return head('Comptabilité', `Écritures générées automatiquement depuis les factures et la caisse · plan inspiré du SYSCOHADA · montants en USD, CDF convertis au taux de chaque opération`) + `
+  <div class="tabs" role="tablist">${Object.entries(tabs).map(([k,l]) => `<button role="tab" aria-selected="${ui.comptaTab === k}" data-act="comptaTab" data-t="${k}">${l}</button>`).join('')}</div>
+  <section class="panel">${body}</section>`;
+}
+
+/* ---------- e-mails ---------- */
+function vEmails(){
+  const tabs = {log:'Journal d\'envoi', tpl:'Modèles'};
+  let body;
+  if (ui.emailTab === 'log'){
+    const e = S.emails.find(x => x.id === ui.emailSel) || S.emails[0];
+    body = `<div class="split"><section class="panel"><div class="list" style="padding:0 16px">
+      ${S.emails.map(x => `<button class="row" style="all:unset;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);${x === e ? 'font-weight:600' : ''}" data-act="emailSel" data-id="${x.id}"><span style="min-width:0"><span>${esc(x.subject)}</span><span class="sub" style="display:block;font-weight:400">${esc(x.toName)} · ${fdate(x.at)} à ${ftime(x.at)}</span></span>${chip(x.status)}</button>`).join('')}
+    </div></section>
+    <section class="panel"><div class="pbody">${e ? `<div class="mail"><div class="mh"><span class="muted">À</span><span>${esc(e.toName)} ${e.to ? '&lt;' + esc(e.to) + '&gt;' : ''}</span><span class="muted">De</span><span>${esc(S.settings.cabinet)} &lt;${esc(S.settings.email)}&gt;</span><span class="muted">Objet</span><b>${esc(e.subject)}</b><span class="muted">État</span><span>${chip(e.status)} ${esc(e.error)}</span></div><pre>${esc(e.body)}</pre>${e.attach.length ? `<div class="att">${e.attach.map(a => `<span class="chip">${esc(a)}</span>`).join('')}</div>` : ''}</div>
+      ${e.status !== 'Envoyé' ? `<div class="actions" style="margin-top:10px"><button class="btn sm" data-act="retryMail" data-id="${e.id}">Renvoyer</button></div>` : ''}` : '<div class="empty">Aucun e-mail envoyé.</div>'}</div></section></div>`;
+  } else {
+    body = `<section class="panel"><div class="pbody" style="display:flex;flex-direction:column;gap:18px">
+      <div class="note">Variables disponibles : {client} {avocat} {date} {heure} {lieu} {objet} {cabinet} {tel_cabinet} {numero} {montant} {echeance} {banque} {mode} {liste}</div>
+      ${Object.entries(S.templates).map(([k,t]) => `<div class="form" style="grid-template-columns:1fr"><h3 style="font-size:16px">${esc(t.name)}</h3>${field('Objet', `<input type="text" id="tpl-s-${k}" value="${esc(t.subject)}" data-change="tplS" data-k="${k}">`)}${field('Message', `<textarea id="tpl-b-${k}" data-change="tplB" data-k="${k}" rows="7">${esc(t.body)}</textarea>`)}</div>`).join('')}
+    </div></section>`;
+  }
+  return head('E-mails', `Envoyés via la file d'attente · rappels la veille à 18 h · ${S.emails.filter(e => e.status === 'Envoyé').length} envoyés, ${S.emails.filter(e => e.status !== 'Envoyé').length} à traiter`, '<button class="btn" data-act="sendRecap">Envoyer le récapitulatif du jour aux avocats</button><button class="btn" data-act="runScheduler">Envoyer les rappels de demain</button>') + `
+  <div class="tabs" role="tablist">${Object.entries(tabs).map(([k,l]) => `<button role="tab" aria-selected="${ui.emailTab === k}" data-act="emailTab" data-t="${k}">${l}</button>`).join('')}</div>${body}`;
+}
+function runScheduler(){
+  const list = S.appts.filter(a => a.start.slice(0,10) === dOnly(1) && ['Planifié','Confirmé'].includes(a.status) && !a.reminded);
+  let ok = 0; list.forEach(a => { a.reminded = true; if (sendMail('rappel', client(a.clientId), apptVars(a), ['rendez-vous.ics']).status === 'Envoyé') ok++; });
+  log('Rappels J-1', `${list.length} rendez-vous traités`); render();
+  toast(list.length ? `${ok} rappel(s) envoyé(s) sur ${list.length} rendez-vous de demain` : 'Aucun rappel à envoyer pour demain');
+}
+function sendRecap(){
+  let n = 0;
+  lawyers().forEach(u => {
+    const l = S.appts.filter(a => a.lawyerId === u.id && a.start.slice(0,10) === T && a.status !== 'Annulé').sort((a,b) => a.start.localeCompare(b.start));
+    if (!l.length) return;
+    sendMail('recap', null, Object.assign(baseVars(), {avocat:u.name, date:fday(T), liste:l.map(a => `- ${ftime(a.start)} · ${a.type} · ${cname(a.clientId)} · ${a.lieu}`).join('\n')}), [], u.name.toLowerCase().replace(/^me /,'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,'.') + '@mukendi-avocats.example');
+    n++;
+  });
+  log('Récapitulatif quotidien', n + ' avocat(s)'); render(); toast(n + ' récapitulatif(s) envoyé(s)');
+}
+
+/* ---------- paramètres ---------- */
+function vParams(){
+  const st = S.settings;
+  return head('Paramètres', 'Identité du cabinet, taux de change, seuils et journal d\'audit') + `
+  <div class="grid2">
+    <section class="panel"><div class="ph"><h2>Cabinet</h2></div><div class="pbody"><div class="form">
+      ${[['cabinet','Nom du cabinet'],['barreau','Barreau'],['adresse','Adresse'],['rccm','RCCM'],['idnat','ID. Nat.'],['nif','NIF'],['tel','Téléphone'],['email','E-mail d\'envoi'],['banque','Coordonnées bancaires']].map(([k,l]) => field(l, `<input type="text" id="set-${k}" value="${esc(st[k])}" data-change="setting" data-k="${k}">`, ['adresse','banque','cabinet'].includes(k) ? 'full' : '')).join('')}
+    </div></div></section>
+    <section class="panel"><div class="ph"><h2>Taux et règles</h2></div><div class="pbody" style="display:flex;flex-direction:column;gap:14px">
+      <div class="form">${field('Taux du jour (FC pour 1 $)', `<input type="number" id="set-rate" value="${rateNow()}" min="1">`)}${field('Source', sel('rsrc', ['Saisie manuelle','Banque Centrale du Congo','Taux marché'], 'Saisie manuelle'))}
+      <div class="full"><button class="btn sm" data-act="saveRate">Enregistrer le taux du jour</button></div></div>
+      <div class="tablewrap"><table><thead><tr><th>Date</th><th class="num">FC pour 1 $</th><th>Source</th></tr></thead><tbody>${S.rates.slice().reverse().map(r => `<tr><td class="mono">${fdate(r.date)}</td><td class="num">${num(r.rate,0)}</td><td>${esc(r.source)}</td></tr>`).join('')}</tbody></table></div>
+      <div class="form">${field('Seuil de validation des sorties ($)', `<input type="number" id="set-seuil" value="${st.seuil}" min="0" data-change="settingNum" data-k="seuil">`)}${field('Consultation par défaut ($)', `<input type="number" id="set-fee" value="${st.consultFee}" min="0" data-change="settingNum" data-k="consultFee">`)}
+      <label class="check full"><input type="checkbox" id="set-tva" ${st.tva ? 'checked' : ''} data-change="tva"> Cabinet assujetti à la TVA (16 % par défaut sur les nouvelles factures)</label></div>
+    </div></section>
+  </div>
+  <section class="panel"><div class="ph"><h2>Utilisateurs et rôles</h2></div><div class="tablewrap"><table><thead><tr><th>Nom</th><th>Fonction</th><th>Rôle</th><th>Modules accessibles</th></tr></thead><tbody>${S.users.map(u => `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.title)}</td><td>${chip(ROLES[u.role])}</td><td class="muted">${ACCESS[u.role].map(v => VIEWS.find(x => x[0] === v)[1]).join(', ')}</td></tr>`).join('')}</tbody></table></div></section>
+  <section class="panel"><div class="ph"><h2>Journal d'audit</h2><span class="muted">Non modifiable</span></div><div class="tablewrap"><table><thead><tr><th>Date</th><th>Utilisateur</th><th>Action</th><th>Détail</th></tr></thead><tbody>${S.audit.map(a => `<tr><td class="mono">${fdate(a.at)} ${ftime(a.at)}</td><td>${esc(uname(a.userId))}</td><td>${esc(a.action)}</td><td>${esc(a.detail)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">Aucune action pour l\'instant.</td></tr>'}</tbody></table></div></section>`;
+}
+
+/* ---------- interactions en direct dans les formulaires ---------- */
+const LIVE = {
+  apptClient(f){ $('#newProspect').hidden = f.clientId.value !== '__new'; const cs = S.cases.filter(d => d.clientId === f.clientId.value); f.caseId.innerHTML = '<option value="">Aucun dossier</option>' + cs.map(d => `<option value="${d.id}">${d.ref} · ${esc(d.title)}</option>`).join(''); },
+  clientType(f){ $('#moraleBox').hidden = f.type.value !== 'morale'; },
+  conflict(f){ const m = conflictMatches(f.name.value); $('#conflictBox').innerHTML = m.length ? `<div class="note warn"><b>Contrôle des conflits d'intérêts :</b><br>${m.map(esc).join('<br>')}</div>` : ''; $('#ackBox').hidden = !m.length; },
+  adverse(f){ const n = f.adverse.value.trim().toLowerCase(); const hit = n.length > 2 ? S.clients.filter(c => n.split(/\s+/).filter(w => w.length > 2).some(w => c.name.toLowerCase().includes(w))) : []; $('#advBox').innerHTML = hit.length ? `<div class="note crit">Conflit possible : ${hit.map(c => esc(c.name)).join(', ')} est client du cabinet.</div>` : ''; },
+  invClient(f){ const cs = S.cases.filter(d => d.clientId === f.clientId.value); f.caseId.innerHTML = '<option value="">Sans dossier</option>' + cs.map(d => `<option value="${d.id}">${d.ref} · ${esc(d.title)}</option>`).join(''); },
+  payClient(f){ const inv = openInvoicesOf(f.clientId.value); const keep = f.invoiceId.value; f.invoiceId.innerHTML = inv.map(i => `<option value="${i.id}">${i.num} · reste ${money(invTotals(i).rest,i.cur)}</option>`).join('') + '<option value="">Sans facture : provision sur honoraires</option>'; if (inv.some(i => i.id === keep)) f.invoiceId.value = keep; LIVE.payCalc(f); },
+  payCalc(f){ const i = S.invoices.find(x => x.id === f.invoiceId.value), a = Number(f.amount.value) || 0, r = Number(f.rate.value) || rateNow(), cur = f.cur.value;
+    if (!i){ $('#payInfo').innerHTML = `<div class="note">Le montant sera enregistré comme avance du client (compte 4191).</div>`; return; }
+    const v = i.cur === cur ? a : i.cur === 'USD' ? a/r : a*r, rest = invTotals(i).rest;
+    $('#payInfo').innerHTML = `<div class="note ${v > rest + 0.01 ? 'crit' : ''}">Imputé sur ${i.num} : <b class="mono">${money(v,i.cur)}</b>${i.cur !== cur ? ` (conversion au taux de ${num(r,0)} FC)` : ''}. Reste après paiement : <b class="mono">${money(Math.max(0,rest - v),i.cur)}</b>.</div>`; },
+  fxCalc(f){ const a = Number(f.amount.value) || 0, r = Number(f.rate.value) || 0, d = f.dir.value; $('#fxInfo').innerHTML = `<div class="note">Vous recevez <b class="mono">${d === 'USD' ? money(a*r,'CDF') : money(r ? a/r : 0,'USD')}</b>. Solde disponible : ${money(balances()[d],d)}.</div>`; },
+  ecart(f){ const b = balances(), eU = (Number(f.cUSD.value) || 0) - b.USD, eC = (Number(f.cCDF.value) || 0) - b.CDF; const ok = Math.abs(eU) < 0.005 && Math.abs(eC) < 0.5; $('#ecartInfo').innerHTML = `<div class="note ${ok ? 'good' : 'warn'}">${ok ? 'Aucun écart : la caisse est juste.' : `Écart USD : <b class="mono">${money(eU,'USD')}</b> · écart CDF : <b class="mono">${money(eC,'CDF')}</b>`}</div>`; }
+};
+function liveAll(){ const f = $('#mform'); if (!f) return; const done = new Set(); f.querySelectorAll('[data-live]').forEach(el => { const k = el.dataset.live; if (!done.has(k)){ done.add(k); LIVE[k](f); } }); }
+
+/* ---------- événements ---------- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const a = t.dataset.act, id = t.dataset.id;
+  if (a === 'overlay'){ if (e.target === t) closeModal(); return; }
+  const H = {
+    close: closeModal,
+    go: () => { ui.view = t.dataset.v; render(); window.scrollTo(0,0); },
+    week: () => { const d = Number(t.dataset.d); ui.week = d === 0 ? mondayOf(TODAY) : addDays(ui.week, d); render(); },
+    newAppt, newClient, newCase, newInvoice: () => newInvoice(), runScheduler, sendRecap,
+    openClient: () => openClient(id), openCase: () => openCase(id), billTime: () => billTime(id),
+    billAppt: () => { const ap = S.appts.find(x => x.id === id); S.invoices.push({id:nid('i'), num:null, clientId:ap.clientId, caseId:ap.caseId, date:T, due:dOnly(0), cur:'USD', rate:rateNow(), tva:S.settings.tva, status:'brouillon', lines:[{lib:'Consultation du ' + fdate(ap.start) + ' avec ' + uname(ap.lawyerId), type:'Consultation', qty:1, pu:S.settings.consultFee}]}); ap.invoiced = true; log('Facturation de consultation', cname(ap.clientId)); ui.view = 'factures'; ui.invFilter = 'draft'; render(); toast('Brouillon de facture de consultation créé'); },
+    invFilter: () => { ui.invFilter = t.dataset.f; render(); },
+    viewInvoice: () => viewInvoice(id), emitInvoice: () => emitInvoice(id),
+    resendInvoice: () => { const i = S.invoices.find(x => x.id === id), tt = invTotals(i); const m = sendMail('facture', client(i.clientId), Object.assign(baseVars(), {client:cname(i.clientId), numero:i.num, montant:money(tt.rest,i.cur), echeance:fdate(i.due)}), [i.num + '.pdf']); log('Envoi de facture', i.num); toast(m.status === 'Envoyé' ? 'Facture envoyée à ' + m.to : 'Non envoyée : ' + m.error); },
+    cancelInvoice: () => { const i = S.invoices.find(x => x.id === id); i.status = 'annulée'; i.cancelDate = T; log('Avoir', 'Annulation de ' + i.num); closeModal(); render(); toast(i.num + ' annulée par un avoir'); },
+    deleteDraft: () => { S.invoices = S.invoices.filter(x => x.id !== id); log('Suppression de brouillon', ''); closeModal(); render(); toast('Brouillon supprimé'); },
+    cashIn: () => cashIn(t.dataset.inv), cashOut, fx: fxModal, closeCash, openCash, receipt: () => showReceipt(id),
+    approve: () => { const m = S.moves.find(x => x.id === id); if (m.mode === 'Espèces' && m.amount > balances()[m.cur]){ toast('Solde insuffisant pour valider cette sortie'); return; } m.status = 'ok'; log('Validation de décaissement', money(m.amount,m.cur) + ' · ' + m.label); render(); toast('Décaissement validé'); },
+    reject: () => { const m = S.moves.find(x => x.id === id); m.status = 'rejected'; log('Refus de décaissement', money(m.amount,m.cur) + ' · ' + m.label); render(); toast('Décaissement refusé'); },
+    comptaTab: () => { ui.comptaTab = t.dataset.t; render(); },
+    emailTab: () => { ui.emailTab = t.dataset.t; render(); },
+    emailSel: () => { ui.emailSel = id; render(); },
+    retryMail: () => { const m = S.emails.find(x => x.id === id); const c = S.clients.find(c => c.name === m.toName); if (c && c.email && c.consent){ m.to = c.email; m.status = 'Envoyé'; m.error = ''; toast('E-mail renvoyé'); } else toast('Toujours impossible : complétez l\'e-mail ou le consentement sur la fiche client'); render(); },
+    saveRate: () => { const r = Number($('#set-rate').value); if (!(r > 0)){ toast('Saisissez un taux valide'); return; } const src = $('#f-rsrc').value; const last = S.rates[S.rates.length-1]; if (last.date === T){ last.rate = r; last.source = src; } else S.rates.push({date:T, rate:r, source:src}); log('Taux du jour', num(r,0) + ' FC pour 1 $'); render(); toast('Taux du jour enregistré'); }
+  };
+  if (H[a]) H[a]();
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'me'){ S.me = t.value; ui.agendaLawyer = 'all'; render(); toast('Connecté en tant que ' + me().name + ' (' + ROLES[me().role] + ')'); return; }
+  const k = t.dataset.change; if (!k) return;
+  if (k === 'lawyer'){ ui.agendaLawyer = t.value; render(); }
+  else if (k === 'apptStatus'){ const ap = S.appts.find(x => x.id === t.dataset.id), old = ap.status; ap.status = t.value; log('Statut de rendez-vous', `${cname(ap.clientId)} : ${old} → ${t.value}`); if (t.value === 'Annulé'){ const m = sendMail('annulation', client(ap.clientId), apptVars(ap)); toast(m.status === 'Envoyé' ? 'Rendez-vous annulé, client prévenu par e-mail' : 'Rendez-vous annulé. E-mail non envoyé : ' + m.error); } else toast('Statut mis à jour : ' + t.value); render(); }
+  else if (k === 'caseStatus'){ const d = caseOf(t.dataset.id); d.status = t.value; log('Statut de dossier', d.ref + ' → ' + t.value); render(); toast('Dossier ' + d.ref + ' : ' + t.value); }
+  else if (k === 'setting'){ S.settings[t.dataset.k] = t.value; log('Paramètre modifié', t.dataset.k); render(); }
+  else if (k === 'settingNum'){ S.settings[t.dataset.k] = Number(t.value) || 0; log('Paramètre modifié', t.dataset.k); }
+  else if (k === 'tva'){ S.settings.tva = t.checked; log('Paramètre modifié', 'TVA ' + (t.checked ? 'activée' : 'désactivée')); }
+  else if (k === 'tplS'){ S.templates[t.dataset.k].subject = t.value; toast('Modèle enregistré'); }
+  else if (k === 'tplB'){ S.templates[t.dataset.k].body = t.value; toast('Modèle enregistré'); }
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.change === 'clientQ'){ ui.clientQ = t.value; const pos = t.selectionStart; render(); const n = $('#f-cq'); n.focus(); n.setSelectionRange(pos,pos); return; }
+  if (t.dataset.live && $('#mform')) LIVE[t.dataset.live]($('#mform'));
+});
+document.addEventListener('submit', e => {
+  if (e.target.id !== 'mform') return;
+  e.preventDefault();
+  const fd = {}; new FormData(e.target).forEach((v,k) => fd[k] = typeof v === 'string' ? v : '');
+  const r = onSubmit ? onSubmit(fd, e.target) : undefined;
+  if (r === 'chain') return;
+  if (typeof r === 'string'){ const el = $('#merr'); el.textContent = r; el.hidden = false; el.scrollIntoView({block:'nearest'}); return; }
+  closeModal(); render();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#modal').hidden) closeModal(); });
+window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (VIEWS.some(x => x[0] === v) && v !== ui.view){ ui.view = v; render(); } });
+
+const hv = location.hash.slice(1); if (VIEWS.some(x => x[0] === hv)) ui.view = hv;
+render();
+</script>
