@@ -47,8 +47,10 @@ class ClientAndCaseSeeder extends Seeder
             $case = LegalCase::query()->create($data + [
                 'reference' => sprintf('LEX-%d-%04d', $year, $number),
                 'created_by' => $nadine->id,
+                // Abonnement : les périodes déjà écoulées sont réputées facturées (voir InvoiceSeeder) ;
+                // la prochaine échéance est la fin de la période en cours.
                 'next_subscription_invoice_on' => $data['fee_type'] === FeeType::Subscription
-                    ? $opened->copy()->addDays(CaseService::SUBSCRIPTION_PERIOD_DAYS * (int) ceil(($opened->diffInDays(today()) + 1) / CaseService::SUBSCRIPTION_PERIOD_DAYS))
+                    ? $opened->copy()->addDays(CaseService::SUBSCRIPTION_PERIOD_DAYS * max(1, intdiv((int) $opened->diffInDays(today()), CaseService::SUBSCRIPTION_PERIOD_DAYS)))
                     : null,
             ]);
             $case->collaborators()->sync(array_map(fn (User $u) => $u->id, $collaborators));

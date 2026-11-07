@@ -127,8 +127,10 @@ it('scénario 15 : la secrétaire crée un dossier sans voir de facturation', fu
 
     $this->actingAs($secretary)->get(route('cases.show', $case))->assertOk()
         ->assertDontSee('Factur', false)   // ni « Facturer », ni « Facture »
-        ->assertDontSee(route('module', 'factures'));
-    $this->actingAs($secretary)->get(route('module', 'factures'))->assertForbidden();
+        ->assertDontSee(route('invoices.create'));
+    $this->actingAs($secretary)->get(route('invoices.index'))->assertForbidden();
+    // La route de création de facture appelée directement est refusée par le serveur.
+    $this->actingAs($secretary)->get(route('invoices.create', ['case' => $case->id]))->assertForbidden();
     expect($secretary->can('logTime', $case))->toBeFalse();
 });
 

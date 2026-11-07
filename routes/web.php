@@ -4,6 +4,10 @@ use App\Enums\Module;
 use App\Enums\Permission;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FirmLogoController;
+use App\Http\Controllers\InvoicePdfController;
+use App\Livewire\Invoices\InvoiceCreate;
+use App\Livewire\Invoices\InvoiceIndex;
+use App\Livewire\Invoices\InvoiceShow;
 use App\Livewire\Agenda\AgendaIndex;
 use App\Livewire\Agenda\AppointmentForm;
 use App\Livewire\Cases\CaseForm;
@@ -96,6 +100,15 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
             Route::get('/', EmailLogIndex::class)->middleware('can:emails.view')->name('index');
             Route::get('modeles', EmailTemplates::class)->middleware('can:email_templates.manage')->name('templates');
         });
+
+        // Factures (FAC-01 à FAC-14) ; la création est refusée côté serveur sans invoices.manage.
+        Route::prefix('factures')->name('invoices.')->group(function () {
+            Route::get('/', InvoiceIndex::class)->name('index');
+            Route::get('nouvelle', InvoiceCreate::class)->middleware('can:invoices.manage')->name('create');
+            Route::get('{invoice}', InvoiceShow::class)->whereNumber('invoice')->name('show');
+            Route::get('{invoice}/pdf', [InvoicePdfController::class, 'invoice'])->whereNumber('invoice')->name('pdf');
+        });
+        Route::get('avoirs/{creditNote}/pdf', [InvoicePdfController::class, 'creditNote'])->whereNumber('creditNote')->name('credit-notes.pdf');
 
         // Modules des phases suivantes : accès déjà contrôlé côté serveur.
         $future = collect(Module::cases())

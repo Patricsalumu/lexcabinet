@@ -34,6 +34,10 @@ class ClientShow extends Component
             ? $this->client->appointments()->with('lawyer')->orderByDesc('starts_at')->limit(20)->get()
             : collect();
 
-        return view('livewire.clients.show', ['cases' => $cases, 'appointments' => $appointments])->title($this->client->name);
+        $invoices = auth()->user()->can('viewAny', \App\Models\Invoice::class)
+            ? $this->client->invoices()->visibleTo(auth()->user())->orderByDesc('id')->get()
+            : collect();
+
+        return view('livewire.clients.show', ['cases' => $cases, 'appointments' => $appointments, 'invoices' => $invoices])->title($this->client->name);
     }
 }

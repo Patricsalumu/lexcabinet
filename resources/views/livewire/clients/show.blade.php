@@ -68,9 +68,21 @@
                 @endcan
             </x-lex.panel>
 
-            <x-lex.panel title="Factures et paiements">
-                <p class="text-sm text-slate-500">L'historique des factures (phase 4) et des paiements avec le solde dû (phase 5) s'affichera ici.</p>
-            </x-lex.panel>
+            @can('viewAny', App\Models\Invoice::class)
+                <x-lex.panel title="Factures" :note="$invoices->count().' facture(s)'">
+                    @forelse ($invoices as $inv)
+                        <div class="flex flex-wrap items-baseline gap-2 border-b border-slate-100 py-2 last:border-0">
+                            <span class="lx-badge {{ $inv->status->badgeClass() }}">{{ $inv->statusLabel() }}</span>
+                            <a href="{{ route('invoices.show', $inv) }}" wire:navigate class="font-mono text-sm hover:underline">{{ $inv->number ?? 'Brouillon' }}</a>
+                            <span class="font-mono text-sm">{{ Money::format((string) $inv->total, $inv->currency) }}</span>
+                            @if ($inv->status->isOpen())<span class="text-xs text-slate-500">reste dû {{ Money::format($inv->balanceDue(), $inv->currency) }}</span>@endif
+                        </div>
+                    @empty
+                        <p class="text-sm text-slate-500">Aucune facture.</p>
+                    @endforelse
+                    <p class="lx-hint mt-2">Les paiements et le solde dû s'afficheront avec la caisse (phase 5).</p>
+                </x-lex.panel>
+            @endcan
         </div>
     </div>
 </div>

@@ -36,6 +36,11 @@ class TimeEntry extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
     public function isInvoiced(): bool
     {
         return $this->invoice_id !== null;

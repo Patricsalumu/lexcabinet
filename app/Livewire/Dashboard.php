@@ -52,7 +52,20 @@ class Dashboard extends Component
                 ->orderBy('starts_at')->get()
             : collect();
 
+        // DB-03 : montant des factures impayées (par devise) et factures échues.
+        $canSeeInvoices = $user->can('viewAny', \App\Models\Invoice::class);
+        $openInvoices = $canSeeInvoices
+            ? \App\Models\Invoice::query()->visibleTo($user)->with('client')
+                ->whereIn('status', [\App\Enums\InvoiceStatus::Issued->value, \App\Enums\InvoiceStatus::PartiallyPaid->value])
+                ->orderBy('due_date')->get()
+            : collect();
+        $unpaid = $openInvoices->groupBy(fn ($i) => $i->currency->value)
+            ->map(fn ($list) => $list->reduce(fn ($sum, $i) => bcadd($sum, $i->balanceDue(), 2), '0'));
+
         return view('livewire.dashboard', [
+            'canSeeInvoices' => $canSeeInvoices,
+            'unpaid' => $unpaid,
+            'overdueInvoices' => $openInvoices->filter->isOverdue()->values(),
             'canSeeAgenda' => $canSeeAgenda,
             'todayAppointments' => $todayAppointments,
             'rate' => $rates->rateFor(),

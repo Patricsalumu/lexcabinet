@@ -91,6 +91,11 @@
                                 @endif
                             </div>
                             <div class="flex flex-wrap items-start gap-2 sm:justify-end">
+                                @if ($a->invoice_id)
+                                    <span class="lx-badge bg-emerald-50 text-emerald-800">Facturé</span>
+                                @elseif ($canBill && $a->isBillableConsultation())
+                                    <a href="{{ route('invoices.create', ['appointment' => $a->id]) }}" wire:navigate class="lx-btn py-1 text-xs">Facturer</a>
+                                @endif
                                 @if ($canManage)
                                     <label for="st-{{ $a->id }}" class="sr-only">Statut</label>
                                     <select id="st-{{ $a->id }}" class="lx-input mt-0 w-auto py-1 text-xs"

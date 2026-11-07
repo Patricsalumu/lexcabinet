@@ -17,6 +17,8 @@ class ExchangeRateSeeder extends Seeder
     {
         $admin = User::query()->where('email', 'grace.mukendi@mukendi-avocats.example')->first();
 
+        $rates->record(Carbon::today()->subDays(30), '2780', RateSource::Manual, $admin);
+        $rates->record(Carbon::today()->subDays(21), '2790', RateSource::Manual, $admin);
         $rates->record(Carbon::today()->subDays(7), '2790', RateSource::Manual, $admin);
         $rates->record(Carbon::today(), '2800', RateSource::Manual, $admin);
     }

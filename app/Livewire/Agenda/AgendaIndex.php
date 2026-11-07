@@ -169,6 +169,7 @@ class AgendaIndex extends Component
             'statuses' => AppointmentStatus::cases(),
             'canManage' => $user->can('create', Appointment::class),
             'canRemind' => $user->can(Permission::RemindersSend->value),
+            'canBill' => $user->can('create', \App\Models\Invoice::class),
             'pendingReminders' => Appointment::query()
                 ->whereIn('status', [AppointmentStatus::Planned->value, AppointmentStatus::Confirmed->value])
                 ->whereNull('reminder_sent_at')

@@ -59,5 +59,5 @@ it('ouvre les pages de paramètres à l\'administrateur', function () {
 
 it('redirige un visiteur non connecté vers la connexion', function () {
     $this->get(route('dashboard'))->assertRedirect(route('login'));
-    $this->get(route('module', 'factures'))->assertRedirect(route('login'));
+    $this->get(route('invoices.index'))->assertRedirect(route('login'));
 });

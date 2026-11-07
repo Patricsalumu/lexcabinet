@@ -53,6 +53,19 @@ class Appointment extends Model
         return $this->belongsTo(User::class, 'lawyer_id');
     }
 
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
+    /** RDV-05 : une consultation honorée, pas encore facturée. */
+    public function isBillableConsultation(): bool
+    {
+        return $this->type === AppointmentType::Consultation
+            && $this->status === AppointmentStatus::Honored
+            && $this->invoice_id === null;
+    }
+
     /** Lieu affiché au client : « Tribunal · Tribunal de commerce, chambre 2 ». */
     public function locationLabel(): string
     {

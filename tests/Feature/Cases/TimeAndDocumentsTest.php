@@ -13,11 +13,12 @@ use Livewire\Livewire;
 it('calcule les heures facturables non facturées (base de la facturation horaire)', function () {
     $lawyer = userWithRoles(Role::Lawyer);
     $case = LegalCase::factory()->create(['lead_lawyer_id' => $lawyer->id]);
+    $invoice = \App\Models\Invoice::query()->create(['case_id' => $case->id, 'client_id' => $case->client_id, 'currency' => 'USD', 'status' => 'draft']);
     $case->timeEntries()->createMany([
         ['user_id' => $lawyer->id, 'worked_on' => today(), 'minutes' => 90, 'description' => 'A', 'billable' => true],
         ['user_id' => $lawyer->id, 'worked_on' => today(), 'minutes' => 60, 'description' => 'B', 'billable' => true],
         ['user_id' => $lawyer->id, 'worked_on' => today(), 'minutes' => 45, 'description' => 'C', 'billable' => false],
-        ['user_id' => $lawyer->id, 'worked_on' => today(), 'minutes' => 120, 'description' => 'D', 'billable' => true, 'invoice_id' => 99],
+        ['user_id' => $lawyer->id, 'worked_on' => today(), 'minutes' => 120, 'description' => 'D', 'billable' => true, 'invoice_id' => $invoice->id],
     ]);
 
     expect($case->unbilledMinutes())->toBe(150)

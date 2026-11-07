@@ -26,6 +26,7 @@ enum Permission: string
     case InvoicesViewAll = 'invoices.view_all';
     case InvoicesViewOwn = 'invoices.view_own';
     case InvoicesManage = 'invoices.manage';
+    case InvoicesCancel = 'invoices.cancel';
 
     case CashView = 'cash.view';
     case CashOperate = 'cash.operate';

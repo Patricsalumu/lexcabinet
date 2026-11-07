@@ -5,7 +5,9 @@ namespace App\Mail;
 use App\Enums\EmailStatus;
 use App\Models\Appointment;
 use App\Models\EmailLog;
+use App\Models\Invoice;
 use App\Services\IcsGenerator;
+use App\Services\InvoicePdf;
 use App\Services\SettingsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -80,6 +82,12 @@ class TemplatedMail extends Mailable implements ShouldQueue
                 $ics = app(IcsGenerator::class)->forAppointment($log->related, $spec['method'] ?? IcsGenerator::REQUEST);
                 $attachments[] = Attachment::fromData(fn () => $ics, $spec['name'] ?? 'rendez-vous.ics')
                     ->withMime('text/calendar');
+            }
+
+            if (($spec['type'] ?? null) === 'invoice_pdf' && $log->related instanceof Invoice) {
+                $pdf = app(InvoicePdf::class)->invoice($log->related);
+                $attachments[] = Attachment::fromData(fn () => $pdf, $spec['name'] ?? 'facture.pdf')
+                    ->withMime('application/pdf');
             }
         }
 

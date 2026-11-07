@@ -14,3 +14,6 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('lexcabinet:send-reminders')->everyFifteenMinutes()->withoutOverlapping();
 
 Schedule::command('lexcabinet:send-daily-recap')->everyFifteenMinutes()->withoutOverlapping();
+
+// FAC-14 : factures d'abonnement, une fois par jour (sans doublon de période).
+Schedule::command('lexcabinet:bill-subscriptions')->dailyAt('06:00')->withoutOverlapping();

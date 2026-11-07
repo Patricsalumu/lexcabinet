@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             ClientAndCaseSeeder::class,
             EmailTemplateSeeder::class,
             AppointmentSeeder::class,
+            InvoiceSeeder::class,
         ]);
     }
 }

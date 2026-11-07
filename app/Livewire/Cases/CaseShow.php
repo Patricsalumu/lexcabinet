@@ -153,6 +153,9 @@ class CaseShow extends Component
             'timeEntries' => $timeEntries,
             'unbilledMinutes' => (int) $unbilled,
             'documents' => $this->case->documents()->with('uploader')->latest()->get(),
+            'invoices' => auth()->user()->can('viewAny', \App\Models\Invoice::class)
+                ? $this->case->invoices()->orderByDesc('id')->get()
+                : collect(),
             'statuses' => CaseStatus::cases(),
             'eventTypes' => CaseEventType::cases(),
             'categories' => DocumentCategory::cases(),

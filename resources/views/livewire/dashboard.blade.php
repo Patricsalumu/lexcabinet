@@ -89,7 +89,30 @@
         </div>
     @endif
 
+    @if ($canSeeInvoices)
+        <x-lex.panel title="Factures impayées" class="mt-6">
+            <div class="flex flex-wrap gap-8">
+                @forelse ($unpaid as $cur => $amount)
+                    <div><span class="block font-mono text-2xl">{{ Money::format($amount, $cur) }}</span><span class="text-sm text-slate-500">reste dû en {{ $cur }}</span></div>
+                @empty
+                    <p class="text-sm text-slate-500">Aucune facture à encaisser.</p>
+                @endforelse
+            </div>
+            @if ($overdueInvoices->isNotEmpty())
+                <h3 class="mt-4 text-sm font-semibold text-red-800">Factures échues</h3>
+                @foreach ($overdueInvoices as $inv)
+                    <div class="flex flex-wrap gap-2 border-b border-slate-100 py-1.5 text-sm last:border-0">
+                        <a href="{{ route('invoices.show', $inv) }}" wire:navigate class="font-mono hover:underline">{{ $inv->number }}</a>
+                        <span>{{ $inv->client->name }}</span>
+                        <span class="font-mono">{{ Money::format($inv->balanceDue(), $inv->currency) }}</span>
+                        <span class="text-xs text-red-800">échue le {{ $inv->due_date->format('d/m/Y') }}</span>
+                    </div>
+                @endforeach
+            @endif
+        </x-lex.panel>
+    @endif
+
     <p class="mt-6 text-sm text-slate-500">
-        Le solde de caisse et les factures impayées s'afficheront ici au fil des phases suivantes.
+        Le solde de caisse et les encaissements du jour s'afficheront ici avec la caisse (phase 5).
     </p>
 </div>

@@ -59,6 +59,23 @@
                 </dl>
             </x-lex.panel>
 
+            @canany(['viewAny', 'create'], App\Models\Invoice::class)
+                <x-lex.panel title="Factures" :note="$invoices->count().' facture(s)'">
+                    @forelse ($invoices as $inv)
+                        <div class="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 py-2 last:border-0">
+                            <a href="{{ route('invoices.show', $inv) }}" wire:navigate class="font-mono text-sm hover:underline">{{ $inv->number ?? 'Brouillon' }}</a>
+                            <span class="font-mono text-sm">{{ Money::format((string) $inv->total, $inv->currency) }}</span>
+                            <span class="lx-badge {{ $inv->status->badgeClass() }}">{{ $inv->statusLabel() }}</span>
+                        </div>
+                    @empty
+                        <p class="text-sm text-slate-500">Aucune facture.</p>
+                    @endforelse
+                    @can('create', App\Models\Invoice::class)
+                        <a href="{{ route('invoices.create', ['case' => $case->id]) }}" wire:navigate class="lx-btn mt-3">Nouvelle facture</a>
+                    @endcan
+                </x-lex.panel>
+            @endcanany
+
             <x-lex.panel title="Pièces jointes" :note="$documents->count().' pièce(s)'">
                 @forelse ($documents as $doc)
                     <div class="flex items-start justify-between gap-3 border-b border-slate-100 py-2 last:border-0" wire:key="doc-{{ $doc->id }}">

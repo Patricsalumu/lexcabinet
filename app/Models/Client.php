@@ -45,6 +45,11 @@ class Client extends Model
         return $this->hasMany(Appointment::class);
     }
 
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
     /** CLI-03 : un e-mail ne part que si le client a une adresse et a donné son consentement. */
     public function canReceiveEmails(): bool
     {
