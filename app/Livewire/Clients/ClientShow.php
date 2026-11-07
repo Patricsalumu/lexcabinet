@@ -30,6 +30,10 @@ class ClientShow extends Component
             ->orderByDesc('opened_on')
             ->get();
 
-        return view('livewire.clients.show', ['cases' => $cases])->title($this->client->name);
+        $appointments = auth()->user()->can('viewAny', \App\Models\Appointment::class)
+            ? $this->client->appointments()->with('lawyer')->orderByDesc('starts_at')->limit(20)->get()
+            : collect();
+
+        return view('livewire.clients.show', ['cases' => $cases, 'appointments' => $appointments])->title($this->client->name);
     }
 }

@@ -36,6 +36,7 @@ enum Permission: string
     case ReportsView = 'reports.view';
 
     case EmailsView = 'emails.view';
+    case EmailTemplatesManage = 'email_templates.manage';
 
     case SettingsManage = 'settings.manage';
     case UsersManage = 'users.manage';

@@ -14,6 +14,8 @@ class DatabaseSeeder extends Seeder
             SettingsSeeder::class,
             ExchangeRateSeeder::class,
             ClientAndCaseSeeder::class,
+            EmailTemplateSeeder::class,
+            AppointmentSeeder::class,
         ]);
     }
 }

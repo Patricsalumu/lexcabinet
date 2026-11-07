@@ -2,7 +2,11 @@
 
 namespace App\Livewire;
 
+use App\Enums\AppointmentStatus;
 use App\Enums\CaseEventType;
+use App\Enums\Permission;
+use App\Enums\Role;
+use App\Models\Appointment;
 use App\Enums\CaseStatus;
 use App\Models\CaseEvent;
 use App\Models\LegalCase;
@@ -38,7 +42,19 @@ class Dashboard extends Component
                 ->get()
             : collect();
 
+        // DB-01 : rendez-vous du jour (ceux de l'avocat connecté s'il ne gère pas l'agenda).
+        $canSeeAgenda = $user->can('viewAny', Appointment::class);
+        $todayAppointments = $canSeeAgenda
+            ? Appointment::query()->with(['client', 'lawyer'])
+                ->whereBetween('starts_at', [today(), today()->endOfDay()])
+                ->whereIn('status', AppointmentStatus::slotValues())
+                ->when(! $user->can(Permission::AgendaManage->value) && $user->hasRole(Role::Lawyer->value), fn ($q) => $q->where('lawyer_id', $user->id))
+                ->orderBy('starts_at')->get()
+            : collect();
+
         return view('livewire.dashboard', [
+            'canSeeAgenda' => $canSeeAgenda,
+            'todayAppointments' => $todayAppointments,
             'rate' => $rates->rateFor(),
             'rateMissing' => $rates->isMissingFor(),
             'user' => $user,

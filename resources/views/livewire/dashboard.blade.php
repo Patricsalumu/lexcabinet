@@ -43,6 +43,23 @@
         </x-lex.panel>
     </div>
 
+    @if ($canSeeAgenda)
+        <x-lex.panel title="Rendez-vous du jour" :note="$todayAppointments->count().' rendez-vous'" class="mt-6">
+            @forelse ($todayAppointments as $a)
+                <div class="flex gap-3 border-b border-slate-100 py-2 last:border-0">
+                    <span class="w-14 shrink-0 font-mono text-sm">{{ $a->starts_at->format('H\hi') }}</span>
+                    <div class="min-w-0">
+                        <p><b>{{ $a->client->name }}</b> · {{ $a->type->label() }} <span class="lx-badge {{ $a->status->badgeClass() }}">{{ $a->status->label() }}</span></p>
+                        <p class="text-xs text-slate-500">{{ $a->subject }} · {{ $a->lawyer->name }} · {{ $a->locationLabel() }}</p>
+                    </div>
+                </div>
+            @empty
+                <p class="text-sm text-slate-500">Aucun rendez-vous aujourd'hui.</p>
+            @endforelse
+            <a href="{{ route('agenda.index') }}" wire:navigate class="lx-btn mt-3">Ouvrir l'agenda</a>
+        </x-lex.panel>
+    @endif
+
     @if ($canSeeCases)
         <div class="mt-6 grid gap-6 md:grid-cols-2">
             <x-lex.panel title="Dossiers actifs">
@@ -73,6 +90,6 @@
     @endif
 
     <p class="mt-6 text-sm text-slate-500">
-        Les rendez-vous du jour, le solde de caisse et les factures impayées s'afficheront ici au fil des phases suivantes.
+        Le solde de caisse et les factures impayées s'afficheront ici au fil des phases suivantes.
     </p>
 </div>

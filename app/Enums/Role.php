@@ -49,6 +49,7 @@ enum Role: string
                 Permission::CasesManage,
                 Permission::RemindersSend,
                 Permission::EmailsView,
+                Permission::EmailTemplatesManage,
             ],
             self::Cashier => [
                 Permission::DashboardView,

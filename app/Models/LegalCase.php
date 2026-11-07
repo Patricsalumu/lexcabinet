@@ -78,6 +78,11 @@ class LegalCase extends Model
         return $this->hasMany(Document::class, 'case_id');
     }
 
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class, 'case_id');
+    }
+
     /** Responsable ou collaborateur du dossier. */
     public function isAssignedTo(User $user): bool
     {

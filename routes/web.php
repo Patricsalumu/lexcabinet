@@ -4,6 +4,8 @@ use App\Enums\Module;
 use App\Enums\Permission;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FirmLogoController;
+use App\Livewire\Agenda\AgendaIndex;
+use App\Livewire\Agenda\AppointmentForm;
 use App\Livewire\Cases\CaseForm;
 use App\Livewire\Cases\CaseIndex;
 use App\Livewire\Cases\CaseShow;
@@ -17,6 +19,8 @@ use App\Livewire\Admin\UserManager;
 use App\Livewire\Auth\TwoFactorChallenge;
 use App\Livewire\Auth\TwoFactorSetup;
 use App\Livewire\Dashboard;
+use App\Livewire\Emails\EmailLogIndex;
+use App\Livewire\Emails\EmailTemplates;
 use App\Livewire\ModulePlaceholder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -78,6 +82,19 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
             Route::get('{case}/pieces/{document}', DocumentController::class)
                 ->whereNumber(['case', 'document'])
                 ->name('documents.download');
+        });
+
+        // Agenda (RDV-01 à RDV-06)
+        Route::prefix('agenda')->name('agenda.')->group(function () {
+            Route::get('/', AgendaIndex::class)->name('index');
+            Route::get('nouveau', AppointmentForm::class)->name('create');
+            Route::get('{appointment}/modifier', AppointmentForm::class)->whereNumber('appointment')->name('edit');
+        });
+
+        // E-mails (NOT-06, NOT-07)
+        Route::prefix('emails')->name('emails.')->group(function () {
+            Route::get('/', EmailLogIndex::class)->middleware('can:emails.view')->name('index');
+            Route::get('modeles', EmailTemplates::class)->middleware('can:email_templates.manage')->name('templates');
         });
 
         // Modules des phases suivantes : accès déjà contrôlé côté serveur.

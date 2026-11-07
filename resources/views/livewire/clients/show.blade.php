@@ -52,8 +52,24 @@
                 @endforelse
             </x-lex.panel>
 
-            <x-lex.panel title="Rendez-vous, factures et paiements">
-                <p class="text-sm text-slate-500">L'historique des rendez-vous (phase 3), des factures (phase 4) et des paiements avec le solde dû (phase 5) s'affichera ici.</p>
+            <x-lex.panel title="Rendez-vous" :note="$appointments->count().' rendez-vous'">
+                @forelse ($appointments as $a)
+                    <div class="flex flex-wrap items-baseline gap-2 border-b border-slate-100 py-2 last:border-0">
+                        <span class="lx-badge {{ $a->status->badgeClass() }}">{{ $a->status->label() }}</span>
+                        <span class="font-mono text-xs">{{ $a->starts_at->format('d/m/Y H\hi') }}</span>
+                        <span>{{ $a->type->label() }} avec {{ $a->lawyer->name }}</span>
+                        <span class="text-xs text-slate-500">· {{ $a->subject }}</span>
+                    </div>
+                @empty
+                    <p class="text-sm text-slate-500">Aucun rendez-vous.</p>
+                @endforelse
+                @can('create', App\Models\Appointment::class)
+                    <a href="{{ route('agenda.create', ['client' => $client->id]) }}" wire:navigate class="lx-btn mt-3">Nouveau rendez-vous</a>
+                @endcan
+            </x-lex.panel>
+
+            <x-lex.panel title="Factures et paiements">
+                <p class="text-sm text-slate-500">L'historique des factures (phase 4) et des paiements avec le solde dû (phase 5) s'affichera ici.</p>
             </x-lex.panel>
         </div>
     </div>
