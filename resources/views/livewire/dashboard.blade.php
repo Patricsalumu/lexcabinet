@@ -112,7 +112,19 @@
         </x-lex.panel>
     @endif
 
-    <p class="mt-6 text-sm text-slate-500">
-        Le solde de caisse et les encaissements du jour s'afficheront ici avec la caisse (phase 5).
-    </p>
+    @if ($canSeeCash)
+        <x-lex.panel title="Caisse" class="mt-6">
+            <div class="flex flex-wrap gap-8">
+                <div><span class="block font-mono text-2xl">{{ Money::format($cashBalances['USD'], 'USD') }}</span><span class="text-sm text-slate-500">espèces USD</span></div>
+                <div><span class="block font-mono text-2xl">{{ Money::format($cashBalances['CDF'], 'CDF') }}</span><span class="text-sm text-slate-500">espèces CDF</span></div>
+                <div>
+                    <span class="block font-mono text-2xl">
+                        @forelse ($todayReceipts as $cur => $total){{ Money::format((string) $total, $cur) }}@if (! $loop->last) + @endif @empty — @endforelse
+                    </span>
+                    <span class="text-sm text-slate-500">encaissé aujourd'hui</span>
+                </div>
+            </div>
+            <a href="{{ route('cash.index') }}" wire:navigate class="lx-btn mt-3">Ouvrir la caisse</a>
+        </x-lex.panel>
+    @endif
 </div>

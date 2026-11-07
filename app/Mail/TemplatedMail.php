@@ -84,6 +84,12 @@ class TemplatedMail extends Mailable implements ShouldQueue
                     ->withMime('text/calendar');
             }
 
+            if (($spec['type'] ?? null) === 'receipt_pdf' && $log->related instanceof \App\Models\CashMovement) {
+                $pdf = app(InvoicePdf::class)->receipt($log->related);
+                $attachments[] = Attachment::fromData(fn () => $pdf, $spec['name'] ?? 'recu.pdf')
+                    ->withMime('application/pdf');
+            }
+
             if (($spec['type'] ?? null) === 'invoice_pdf' && $log->related instanceof Invoice) {
                 $pdf = app(InvoicePdf::class)->invoice($log->related);
                 $attachments[] = Attachment::fromData(fn () => $pdf, $spec['name'] ?? 'facture.pdf')

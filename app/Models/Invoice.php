@@ -101,6 +101,16 @@ class Invoice extends Model
         return $this->hasMany(TimeEntry::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(CashMovement::class)->where('type', \App\Enums\CashMovementType::Receipt->value);
+    }
+
+    public function allocations(): HasMany
+    {
+        return $this->hasMany(AdvanceAllocation::class);
+    }
+
     public function creditNote(): HasOne
     {
         return $this->hasOne(CreditNote::class);

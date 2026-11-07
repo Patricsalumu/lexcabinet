@@ -16,6 +16,9 @@
             @can('send', $invoice)
                 <button type="button" wire:click="send" class="lx-btn">Envoyer par e-mail</button>
             @endcan
+            @if ($canCash && $invoice->status->isOpen())
+                <a href="{{ route('cash.receipt', ['invoice' => $invoice->id]) }}" wire:navigate class="lx-btn-primary">Encaisser</a>
+            @endif
             @if ($canEdit)
                 <button type="button" wire:click="deleteDraft" wire:confirm="Supprimer ce brouillon ?" class="lx-btn text-red-700">Supprimer le brouillon</button>
                 <button type="button" wire:click="issue" wire:confirm="Émettre la facture ? Elle recevra son numéro définitif et ne pourra plus être modifiée." class="lx-btn-primary">Émettre</button>
@@ -168,6 +171,57 @@
                         @if ($invoice->legalCase)
                             <button type="button" wire:click="refreshAuto" class="lx-btn">Actualiser la ligne d'honoraires</button>
                         @endif
+                    </form>
+                </x-lex.panel>
+            @endif
+
+            @if ($payments->isNotEmpty() || $invoice->allocations->isNotEmpty())
+                <x-lex.panel title="Paiements">
+                    @foreach ($payments as $p)
+                        <div class="flex flex-wrap justify-between gap-2 border-b border-slate-100 py-1.5 text-sm last:border-0">
+                            <span>
+                                <span class="font-mono text-xs">{{ $p->occurred_at->format('d/m/Y') }}</span>
+                                @if ($p->receipt_number)
+                                    @can('cash.view')<a href="{{ route('cash.receipt-pdf', $p) }}" target="_blank" class="font-mono underline">{{ $p->receipt_number }}</a>@else<span class="font-mono">{{ $p->receipt_number }}</span>@endcan
+                                @else
+                                    {{ $p->type->label() }}
+                                @endif
+                                · {{ $p->mode?->label() }}
+                            </span>
+                            <span class="font-mono">{{ $p->direction === 'in' ? '+' : '−' }}{{ $m($p->invoice_amount) }}
+                                @if ($p->currency !== $invoice->currency)<span class="block text-right text-xs text-slate-500">{{ Money::format((string) $p->amount, $p->currency) }} à {{ Money::formatRate((string) $p->exchange_rate) }}</span>@endif
+                            </span>
+                        </div>
+                    @endforeach
+                    @foreach ($invoice->allocations as $a)
+                        <div class="flex flex-wrap justify-between gap-2 border-b border-slate-100 py-1.5 text-sm last:border-0">
+                            <span><span class="font-mono text-xs">{{ $a->created_at->format('d/m/Y') }}</span> Provision {{ $a->advance->receipt_number }} imputée</span>
+                            <span class="font-mono">+{{ $m($a->invoice_amount) }}</span>
+                        </div>
+                    @endforeach
+                </x-lex.panel>
+            @endif
+
+            @if ($advances->isNotEmpty())
+                <x-lex.panel title="Imputer une provision" note="Provision reçue sans facture">
+                    <form wire:submit="allocate" class="grid gap-3">
+                        <div>
+                            <label for="a-adv" class="lx-label">Provision</label>
+                            <select id="a-adv" wire:model="advanceId" class="lx-input">
+                                <option value="">Choisir</option>
+                                @foreach ($advances as $row)
+                                    <option value="{{ $row['movement']->id }}">{{ $row['movement']->receipt_number }} · disponible {{ Money::format($row['available'], $row['movement']->currency) }}</option>
+                                @endforeach
+                            </select>
+                            @error('advanceId') <p class="lx-error">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label for="a-amt" class="lx-label">Montant à imputer (devise de la provision)</label>
+                            <input id="a-amt" type="text" inputmode="decimal" wire:model="advanceAmount" class="lx-input">
+                            @error('advanceAmount') <p class="lx-error">{{ $message }}</p> @enderror
+                            @error('allocation') <p class="lx-error">{{ $message }}</p> @enderror
+                        </div>
+                        <button type="submit" class="lx-btn">Imputer</button>
                     </form>
                 </x-lex.panel>
             @endif

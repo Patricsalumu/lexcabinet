@@ -80,9 +80,26 @@
                     @empty
                         <p class="text-sm text-slate-500">Aucune facture.</p>
                     @endforelse
-                    <p class="lx-hint mt-2">Les paiements et le solde dû s'afficheront avec la caisse (phase 5).</p>
+                    <p class="mt-2 text-sm">Solde dû :
+                        @forelse ($due as $cur => $amount)<b class="font-mono">{{ Money::format($amount, $cur) }}</b>@if (! $loop->last) et @endif @empty <b>rien</b> @endforelse
+                    </p>
                 </x-lex.panel>
             @endcan
+
+            @if ($canCash)
+                <x-lex.panel title="Paiements et provisions" :note="$payments->count().' opération(s)'">
+                    @forelse ($payments as $p)
+                        <div class="flex flex-wrap items-baseline gap-2 border-b border-slate-100 py-2 last:border-0 text-sm">
+                            <span class="font-mono text-xs">{{ $p->occurred_at->format('d/m/Y') }}</span>
+                            @if ($p->receipt_number)<a href="{{ route('cash.receipt-pdf', $p) }}" target="_blank" class="font-mono underline">{{ $p->receipt_number }}</a>@else<span>{{ $p->type->label() }}</span>@endif
+                            <span class="font-mono">{{ $p->direction === 'in' ? '+' : '−' }}{{ Money::format((string) $p->amount, $p->currency) }}</span>
+                            <span class="text-xs text-slate-500">{{ $p->mode?->label() }} · {{ $p->invoice?->number ?? 'provision sans facture' }}</span>
+                        </div>
+                    @empty
+                        <p class="text-sm text-slate-500">Aucun paiement.</p>
+                    @endforelse
+                </x-lex.panel>
+            @endif
         </div>
     </div>
 </div>

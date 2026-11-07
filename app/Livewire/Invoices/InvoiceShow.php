@@ -44,6 +44,11 @@ class InvoiceShow extends Component
     // Avoir
     public string $reason = '';
 
+    // Imputation d'une provision (FAC-13)
+    public string $advanceId = '';
+
+    public string $advanceAmount = '';
+
     public function mount(Invoice $invoice): void
     {
         $this->authorize('view', $invoice);
@@ -155,12 +160,44 @@ class InvoiceShow extends Component
         session()->flash('status', "Facture annulée par l'avoir {$credit->number}.");
     }
 
-    public function render(): View
+    public function allocate(\App\Services\CashService $cash): void
     {
-        $this->invoice->load(['lines', 'client', 'legalCase', 'appointment.lawyer', 'creditNote', 'issuedBy']);
+        $this->authorize(\App\Enums\Permission::CashOperate->value);
+        $this->validate([
+            'advanceId' => ['required', 'integer', 'exists:cash_movements,id'],
+            'advanceAmount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
+        ], [], ['advanceId' => 'provision', 'advanceAmount' => 'montant']);
+
+        $cash->allocateAdvance(\App\Models\CashMovement::query()->findOrFail((int) $this->advanceId), $this->invoice, (string) $this->advanceAmount, auth()->user());
+        $this->reset(['advanceId', 'advanceAmount']);
+        $this->invoice->refresh();
+        session()->flash('status', 'Provision imputée sur la facture.');
+    }
+
+    public function render(\App\Services\CashService $cash): View
+    {
+        $this->invoice->load(['lines', 'client', 'legalCase', 'appointment.lawyer', 'creditNote', 'issuedBy', 'allocations.advance']);
+        $canCash = auth()->user()->can(\App\Enums\Permission::CashOperate->value);
+
+        $advances = $canCash && $this->invoice->status->isOpen()
+            ? \App\Models\CashMovement::query()
+                ->where('type', \App\Enums\CashMovementType::Receipt->value)
+                ->whereNull('invoice_id')
+                ->where('client_id', $this->invoice->client_id)
+                ->where('status', \App\Enums\MovementStatus::Validated->value)
+                ->get()
+                ->map(fn ($m) => ['movement' => $m, 'available' => $cash->advanceAvailable($m)])
+                ->filter(fn ($row) => bccomp($row['available'], '0', 2) > 0)
+                ->values()
+            : collect();
 
         return view('livewire.invoices.show', [
             'lineTypes' => InvoiceLineType::manualTypes(),
+            'payments' => $this->invoice->status->isLocked()
+                ? \App\Models\CashMovement::query()->where('invoice_id', $this->invoice->id)->with('reverses')->orderBy('occurred_at')->get()
+                : collect(),
+            'canCash' => $canCash,
+            'advances' => $advances,
         ])->title($this->invoice->displayNumber());
     }
 }

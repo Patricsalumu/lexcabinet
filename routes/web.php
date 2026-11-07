@@ -5,6 +5,11 @@ use App\Enums\Permission;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FirmLogoController;
 use App\Http\Controllers\InvoicePdfController;
+use App\Http\Controllers\ReceiptPdfController;
+use App\Livewire\Admin\TreasuryAccounts;
+use App\Livewire\Cash\CashDesk;
+use App\Livewire\Cash\DisbursementForm;
+use App\Livewire\Cash\ReceiptForm;
 use App\Livewire\Invoices\InvoiceCreate;
 use App\Livewire\Invoices\InvoiceIndex;
 use App\Livewire\Invoices\InvoiceShow;
@@ -67,6 +72,7 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
             Route::get('utilisateurs', UserManager::class)->middleware('can:users.manage')->name('users');
             Route::get('taux-de-change', ExchangeRates::class)->middleware('can:rates.manage')->name('rates');
             Route::get('journal-audit', AuditLog::class)->middleware('can:audit.view')->name('audit');
+            Route::get('tresorerie', TreasuryAccounts::class)->middleware('can:settings.manage')->name('treasury');
         });
 
         // Clients (CLI-01 à CLI-04)
@@ -109,6 +115,14 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
             Route::get('{invoice}/pdf', [InvoicePdfController::class, 'invoice'])->whereNumber('invoice')->name('pdf');
         });
         Route::get('avoirs/{creditNote}/pdf', [InvoicePdfController::class, 'creditNote'])->whereNumber('creditNote')->name('credit-notes.pdf');
+
+        // Caisse (CAI-01 à CAI-08)
+        Route::prefix('caisse')->name('cash.')->group(function () {
+            Route::get('/', CashDesk::class)->middleware('can:cash.view')->name('index');
+            Route::get('encaisser', ReceiptForm::class)->middleware('can:cash.operate')->name('receipt');
+            Route::get('decaisser', DisbursementForm::class)->middleware('can:cash.operate')->name('disbursement');
+            Route::get('recus/{movement}', ReceiptPdfController::class)->whereNumber('movement')->name('receipt-pdf');
+        });
 
         // Modules des phases suivantes : accès déjà contrôlé côté serveur.
         $future = collect(Module::cases())

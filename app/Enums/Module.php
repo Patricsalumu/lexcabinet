@@ -52,7 +52,7 @@ enum Module: string
     /** Modules livrés ; les autres affichent une page « à venir » (route « module »). */
     public function isDelivered(): bool
     {
-        return in_array($this, [self::Dashboard, self::Settings, self::Clients, self::Cases, self::Agenda, self::Emails, self::Invoices], true);
+        return in_array($this, [self::Dashboard, self::Settings, self::Clients, self::Cases, self::Agenda, self::Emails, self::Invoices, self::Cash], true);
     }
 
     public function url(): string
@@ -65,6 +65,7 @@ enum Module: string
             self::Agenda => route('agenda.index'),
             self::Emails => route('emails.index'),
             self::Invoices => route('invoices.index'),
+            self::Cash => route('cash.index'),
             default => route('module', $this->value),
         };
     }
@@ -79,6 +80,7 @@ enum Module: string
             self::Agenda => request()->routeIs('agenda.*'),
             self::Emails => request()->routeIs('emails.*'),
             self::Invoices => request()->routeIs('invoices.*'),
+            self::Cash => request()->routeIs('cash.*'),
             default => request()->routeIs('module') && request()->route('module') === $this->value,
         };
     }

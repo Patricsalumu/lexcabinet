@@ -62,7 +62,18 @@ class Dashboard extends Component
         $unpaid = $openInvoices->groupBy(fn ($i) => $i->currency->value)
             ->map(fn ($list) => $list->reduce(fn ($sum, $i) => bcadd($sum, $i->balanceDue(), 2), '0'));
 
+        // DB-02 : solde de caisse USD et CDF, encaissements du jour.
+        $canSeeCash = $user->can(Permission::CashView->value);
+        $cash = $canSeeCash ? app(\App\Services\CashService::class) : null;
+
         return view('livewire.dashboard', [
+            'canSeeCash' => $canSeeCash,
+            'cashBalances' => $cash?->cashBalances(),
+            'todayReceipts' => $canSeeCash
+                ? \App\Models\CashMovement::query()->where('type', \App\Enums\CashMovementType::Receipt->value)
+                    ->where('status', \App\Enums\MovementStatus::Validated->value)->whereDate('occurred_at', today())
+                    ->selectRaw('currency, sum(amount) as total')->groupBy('currency')->pluck('total', 'currency')
+                : collect(),
             'canSeeInvoices' => $canSeeInvoices,
             'unpaid' => $unpaid,
             'overdueInvoices' => $openInvoices->filter->isOverdue()->values(),

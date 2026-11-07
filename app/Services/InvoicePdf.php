@@ -32,6 +32,16 @@ class InvoicePdf
             ->output();
     }
 
+    /** Reçu de paiement numéroté RC-AAAA-0001 (CAI-03). */
+    public function receipt(\App\Models\CashMovement $movement): string
+    {
+        $movement->loadMissing(['client', 'invoice', 'creator', 'reversal']);
+
+        return Pdf::loadView('pdf.receipt', $this->common() + ['movement' => $movement])
+            ->setPaper('a5', 'landscape')
+            ->output();
+    }
+
     /** @return array<string, mixed> */
     private function common(): array
     {
