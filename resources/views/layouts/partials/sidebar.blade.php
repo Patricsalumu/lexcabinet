@@ -22,16 +22,8 @@
         @foreach (Module::cases() as $module)
             @can('view-module', $module->value)
                 @php
-                    $url = match ($module) {
-                        Module::Dashboard => route('dashboard'),
-                        Module::Settings => route('settings.index'),
-                        default => route('module', $module->value),
-                    };
-                    $active = match ($module) {
-                        Module::Dashboard => request()->routeIs('dashboard'),
-                        Module::Settings => request()->routeIs('settings.*'),
-                        default => request()->routeIs('module') && request()->route('module') === $module->value,
-                    };
+                    $url = $module->url();
+                    $active = $module->isCurrent();
                 @endphp
                 <a href="{{ $url }}" wire:navigate
                    @class([

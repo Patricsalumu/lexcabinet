@@ -43,7 +43,36 @@
         </x-lex.panel>
     </div>
 
+    @if ($canSeeCases)
+        <div class="mt-6 grid gap-6 md:grid-cols-2">
+            <x-lex.panel title="Dossiers actifs">
+                <div class="flex flex-wrap gap-6">
+                    @foreach ($activeStatuses as $s)
+                        <a href="{{ route('cases.index', ['status' => $s->value]) }}" wire:navigate class="hover:underline">
+                            <span class="block font-mono text-2xl text-slate-900">{{ $casesByStatus[$s->value] ?? 0 }}</span>
+                            <span class="text-sm text-slate-500">{{ $s->label() }}</span>
+                        </a>
+                    @endforeach
+                </div>
+            </x-lex.panel>
+
+            <x-lex.panel title="Prochaines audiences">
+                @forelse ($hearings as $h)
+                    <div class="flex gap-3 border-b border-slate-100 py-2 last:border-0">
+                        <span class="w-28 shrink-0 font-mono text-xs text-slate-500">{{ $h->occurred_at->translatedFormat('D j M') }}<br>{{ $h->occurred_at->format('H\hi') }}</span>
+                        <div class="min-w-0">
+                            <a href="{{ route('cases.show', $h->legalCase) }}" wire:navigate class="font-medium hover:underline">{{ $h->legalCase->title }}</a>
+                            <p class="text-xs text-slate-500">{{ $h->description }}{{ $h->chamber ? ' · '.$h->chamber : '' }}</p>
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-sm text-slate-500">Aucune audience à venir.</p>
+                @endforelse
+            </x-lex.panel>
+        </div>
+    @endif
+
     <p class="mt-6 text-sm text-slate-500">
-        Les rendez-vous du jour, le solde de caisse, les factures impayées et les dossiers actifs s'afficheront ici au fil des phases suivantes.
+        Les rendez-vous du jour, le solde de caisse et les factures impayées s'afficheront ici au fil des phases suivantes.
     </p>
 </div>

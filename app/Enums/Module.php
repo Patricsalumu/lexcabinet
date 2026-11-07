@@ -49,6 +49,34 @@ enum Module: string
         };
     }
 
+    /** Modules livrés ; les autres affichent une page « à venir » (route « module »). */
+    public function isDelivered(): bool
+    {
+        return in_array($this, [self::Dashboard, self::Settings, self::Clients, self::Cases], true);
+    }
+
+    public function url(): string
+    {
+        return match ($this) {
+            self::Dashboard => route('dashboard'),
+            self::Settings => route('settings.index'),
+            self::Clients => route('clients.index'),
+            self::Cases => route('cases.index'),
+            default => route('module', $this->value),
+        };
+    }
+
+    public function isCurrent(): bool
+    {
+        return match ($this) {
+            self::Dashboard => request()->routeIs('dashboard'),
+            self::Settings => request()->routeIs('settings.*'),
+            self::Clients => request()->routeIs('clients.*'),
+            self::Cases => request()->routeIs('cases.*'),
+            default => request()->routeIs('module') && request()->route('module') === $this->value,
+        };
+    }
+
     /** Phase de livraison du module (les modules futurs affichent une page « à venir »). */
     public function phase(): int
     {

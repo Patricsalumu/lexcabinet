@@ -19,8 +19,7 @@ it('affiche dans le menu les seuls modules autorisés', function (array $roles, 
     $response = $this->actingAs($user)->get(route('dashboard'))->assertOk();
 
     foreach (Module::cases() as $module) {
-        $url = $module === Module::Dashboard ? route('dashboard')
-            : ($module === Module::Settings ? route('settings.index') : route('module', $module->value));
+        $url = $module->url();
 
         in_array($module, $visible, true)
             ? $response->assertSee('href="'.$url.'"', false)
@@ -36,7 +35,7 @@ it('refuse côté serveur l\'accès direct à un module non autorisé', function
             continue;
         }
 
-        $this->actingAs($user)->get(route('module', $module->value))
+        $this->actingAs($user)->get($module->url())
             ->assertStatus(in_array($module, $visible, true) ? 200 : 403);
     }
 })->with('menus');

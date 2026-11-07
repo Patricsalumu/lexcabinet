@@ -2,7 +2,14 @@
 
 use App\Enums\Module;
 use App\Enums\Permission;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FirmLogoController;
+use App\Livewire\Cases\CaseForm;
+use App\Livewire\Cases\CaseIndex;
+use App\Livewire\Cases\CaseShow;
+use App\Livewire\Clients\ClientForm;
+use App\Livewire\Clients\ClientIndex;
+use App\Livewire\Clients\ClientShow;
 use App\Livewire\Admin\AuditLog;
 use App\Livewire\Admin\ExchangeRates;
 use App\Livewire\Admin\FirmSettings;
@@ -54,9 +61,28 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
             Route::get('journal-audit', AuditLog::class)->middleware('can:audit.view')->name('audit');
         });
 
+        // Clients (CLI-01 à CLI-04)
+        Route::prefix('clients')->name('clients.')->group(function () {
+            Route::get('/', ClientIndex::class)->name('index');
+            Route::get('nouveau', ClientForm::class)->name('create');
+            Route::get('{client}', ClientShow::class)->whereNumber('client')->name('show');
+            Route::get('{client}/modifier', ClientForm::class)->whereNumber('client')->name('edit');
+        });
+
+        // Dossiers (DOS-01 à DOS-08) ; chaque composant vérifie la policy du dossier.
+        Route::prefix('dossiers')->name('cases.')->group(function () {
+            Route::get('/', CaseIndex::class)->name('index');
+            Route::get('nouveau', CaseForm::class)->name('create');
+            Route::get('{case}', CaseShow::class)->whereNumber('case')->name('show');
+            Route::get('{case}/modifier', CaseForm::class)->whereNumber('case')->name('edit');
+            Route::get('{case}/pieces/{document}', DocumentController::class)
+                ->whereNumber(['case', 'document'])
+                ->name('documents.download');
+        });
+
         // Modules des phases suivantes : accès déjà contrôlé côté serveur.
         $future = collect(Module::cases())
-            ->reject(fn (Module $m) => in_array($m, [Module::Dashboard, Module::Settings], true))
+            ->reject(fn (Module $m) => $m->isDelivered())
             ->map->value
             ->all();
 
