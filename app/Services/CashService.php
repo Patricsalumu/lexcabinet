@@ -34,6 +34,7 @@ class CashService
         private readonly ExchangeRateService $rates,
         private readonly SettingsService $settings,
         private readonly EmailService $emails,
+        private readonly AccountingPoster $accounting,
     ) {}
 
     // ------------------------------------------------------------------ Soldes
@@ -128,7 +129,7 @@ class CashService
                 if (bccomp($value, '0', 2) === 0) {
                     continue;
                 }
-                CashMovement::query()->create([
+                $adjustment = CashMovement::query()->create([
                     'type' => CashMovementType::Adjustment,
                     'direction' => bccomp($value, '0', 2) > 0 ? CashMovement::IN : CashMovement::OUT,
                     'status' => MovementStatus::Validated,
@@ -142,6 +143,7 @@ class CashService
                     'label' => 'Écart de caisse à la clôture : '.trim((string) $reason),
                     'created_by' => $by->id,
                 ]);
+                $this->accounting->movement($adjustment, $by);
             }
 
             $session->fill([
@@ -213,6 +215,7 @@ class CashService
             if ($invoice) {
                 $this->applyToInvoice($invoice, $invoiceAmount);
             }
+            $this->accounting->movement($movement, $by);
 
             activity('cash')->causedBy($by)->performedOn($movement)
                 ->withProperties(['amount' => $amount, 'currency' => $currency->value, 'rate' => $rate, 'invoice' => $invoice?->number])
@@ -268,6 +271,7 @@ class CashService
                 'created_by' => $by->id,
             ]);
             $this->applyToInvoice($invoice, $invoiceAmount);
+            $this->accounting->allocation($allocation, $by);
 
             activity('cash')->causedBy($by)->performedOn($advance)
                 ->withProperties(['invoice' => $invoice->number, 'amount' => $amount, 'invoice_amount' => $invoiceAmount])
@@ -321,6 +325,7 @@ class CashService
                 'validated_at' => $needsValidation ? null : now(),
                 'created_by' => $by->id,
             ]);
+            $this->accounting->movement($movement, $by); // seulement s'il est validé
 
             activity('cash')->causedBy($by)->performedOn($movement)
                 ->withProperties(['amount' => $amount, 'currency' => $currency->value, 'category' => $movement->category->label()])
@@ -337,6 +342,7 @@ class CashService
             $this->assertSufficient($movement->account, (string) $movement->amount);
 
             $movement->fill(['status' => MovementStatus::Validated, 'validated_by' => $by->id, 'validated_at' => now()])->save();
+            $this->accounting->movement($movement, $by);
             activity('cash')->causedBy($by)->performedOn($movement)->log('Décaissement validé : '.Money::format((string) $movement->amount, $movement->currency).' · '.$movement->label);
 
             return $movement;
@@ -391,6 +397,8 @@ class CashService
                 'validated_at' => now(),
                 'created_by' => $by->id,
             ]);
+
+            $this->accounting->movement($movement, $by);
 
             activity('cash')->causedBy($by)->performedOn($movement)
                 ->log('Change : '.Money::format($given, $from).' contre '.Money::format($received, $to).' au taux de '.Money::formatRate($rate));
@@ -457,6 +465,7 @@ class CashService
                 'validated_at' => now(),
                 'created_by' => $by->id,
             ]);
+            $this->accounting->movement($reversal, $by); // contre-passation de l'écriture d'origine
 
             if ($original->invoice_id) {
                 $invoice = Invoice::query()->whereKey($original->invoice_id)->lockForUpdate()->firstOrFail();

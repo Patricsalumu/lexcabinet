@@ -49,12 +49,6 @@ enum Module: string
         };
     }
 
-    /** Modules livrés ; les autres affichent une page « à venir » (route « module »). */
-    public function isDelivered(): bool
-    {
-        return in_array($this, [self::Dashboard, self::Settings, self::Clients, self::Cases, self::Agenda, self::Emails, self::Invoices, self::Cash], true);
-    }
-
     public function url(): string
     {
         return match ($this) {
@@ -66,7 +60,7 @@ enum Module: string
             self::Emails => route('emails.index'),
             self::Invoices => route('invoices.index'),
             self::Cash => route('cash.index'),
-            default => route('module', $this->value),
+            self::Accounting => route('accounting.index'),
         };
     }
 
@@ -81,20 +75,7 @@ enum Module: string
             self::Emails => request()->routeIs('emails.*'),
             self::Invoices => request()->routeIs('invoices.*'),
             self::Cash => request()->routeIs('cash.*'),
-            default => request()->routeIs('module') && request()->route('module') === $this->value,
-        };
-    }
-
-    /** Phase de livraison du module (les modules futurs affichent une page « à venir »). */
-    public function phase(): int
-    {
-        return match ($this) {
-            self::Dashboard, self::Settings => 1,
-            self::Clients, self::Cases => 2,
-            self::Agenda, self::Emails => 3,
-            self::Invoices => 4,
-            self::Cash => 5,
-            self::Accounting => 6,
+            self::Accounting => request()->routeIs('accounting.*'),
         };
     }
 }

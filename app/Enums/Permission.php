@@ -34,6 +34,7 @@ enum Permission: string
 
     case AccountingView = 'accounting.view';
     case AccountingManage = 'accounting.manage';
+    case AccountingClose = 'accounting.close';
     case ReportsView = 'reports.view';
 
     case EmailsView = 'emails.view';

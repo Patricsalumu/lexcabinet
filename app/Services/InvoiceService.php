@@ -23,6 +23,7 @@ class InvoiceService
         private readonly NumberingService $numbering,
         private readonly ExchangeRateService $rates,
         private readonly EmailService $emails,
+        private readonly AccountingPoster $accounting,
     ) {}
 
     /**
@@ -71,6 +72,9 @@ class InvoiceService
             if ($timeEntryIds !== []) {
                 TimeEntry::query()->whereKey($timeEntryIds)->update(['invoice_id' => $invoice->id]);
             }
+
+            // Écriture de vente : 411 / 706, 4431 (refusée si la période est clôturée).
+            $this->accounting->invoiceIssued($invoice, $by);
 
             activity('invoices')->causedBy($by)->performedOn($invoice)
                 ->withProperties(['total' => (string) $invoice->total, 'currency' => $invoice->currency->value, 'rate' => (string) $rate->rate])
@@ -125,6 +129,7 @@ class InvoiceService
             ]);
 
             $invoice->fill(['status' => InvoiceStatus::Cancelled, 'cancelled_at' => now()])->save();
+            $this->accounting->creditNote($credit, $by);
 
             TimeEntry::query()->where('invoice_id', $invoice->id)->update(['invoice_id' => null]);
             Appointment::query()->where('invoice_id', $invoice->id)->update(['invoice_id' => null]);

@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\Module;
 use App\Enums\Permission;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FirmLogoController;
@@ -30,7 +29,10 @@ use App\Livewire\Auth\TwoFactorSetup;
 use App\Livewire\Dashboard;
 use App\Livewire\Emails\EmailLogIndex;
 use App\Livewire\Emails\EmailTemplates;
-use App\Livewire\ModulePlaceholder;
+use App\Http\Controllers\AccountingExportController;
+use App\Livewire\Accounting\AccountingIndex;
+use App\Livewire\Accounting\ChartOfAccounts;
+use App\Livewire\Accounting\ManualEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -124,16 +126,16 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
             Route::get('recus/{movement}', ReceiptPdfController::class)->whereNumber('movement')->name('receipt-pdf');
         });
 
-        // Modules des phases suivantes : accès déjà contrôlé côté serveur.
-        $future = collect(Module::cases())
-            ->reject(fn (Module $m) => $m->isDelivered())
-            ->map->value
-            ->all();
-
-        Route::get('{module}', ModulePlaceholder::class)
-            ->whereIn('module', $future)
-            ->middleware('can:view-module,module')
-            ->name('module');
+        // Comptabilité (CPT-01 à CPT-07)
+        Route::prefix('comptabilite')->name('accounting.')->middleware('can:accounting.view')->group(function () {
+            Route::get('/', AccountingIndex::class)->name('index');
+            Route::get('plan-comptable', ChartOfAccounts::class)->name('chart');
+            Route::get('ecriture', ManualEntry::class)->middleware('can:accounting.manage')->name('manual');
+            Route::get('export/{report}.{format}', AccountingExportController::class)
+                ->whereIn('report', ['journal', 'ledger', 'balance', 'result'])
+                ->whereIn('format', ['xlsx', 'pdf'])
+                ->name('export');
+        });
     });
 });
 
