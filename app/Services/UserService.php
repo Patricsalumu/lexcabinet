@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -14,21 +15,27 @@ use Illuminate\Validation\ValidationException;
  */
 class UserService
 {
+    public function __construct(private readonly AccountNotifier $notifier) {}
+
     /**
-     * @param  array{name: string, title?: ?string, email: string, phone?: ?string, password: string}  $data
+     * Crée le compte et envoie au nouvel utilisateur son lien d'accès sécurisé.
+     * Sans mot de passe saisi par l'administrateur, un mot de passe aléatoire inconnu de tous
+     * est posé : l'utilisateur définit le sien par le lien. Aucun mot de passe n'est envoyé.
+     *
+     * @param  array{name: string, title?: ?string, email: string, phone?: ?string, password?: ?string}  $data
      * @param  list<string>  $roles
      */
-    public function create(array $data, array $roles, User $by): User
+    public function create(array $data, array $roles, User $by, bool $notify = true): User
     {
         $roles = $this->validRoles($roles);
 
-        return DB::transaction(function () use ($data, $roles, $by) {
+        return DB::transaction(function () use ($data, $roles, $by, $notify) {
             $user = User::query()->create([
                 'name' => $data['name'],
                 'title' => $data['title'] ?? null,
                 'email' => $data['email'],
                 'phone' => $data['phone'] ?? null,
-                'password' => $data['password'],
+                'password' => filled($data['password'] ?? null) ? $data['password'] : Str::password(40),
                 'is_active' => true,
             ]);
             $user->forceFill(['email_verified_at' => now()])->saveQuietly();
@@ -36,8 +43,22 @@ class UserService
             $user->syncRoles($roles);
             $this->logRoles($user, [], $roles, $by);
 
+            // Journalisé dans la transaction ; le message ne part qu'après le commit.
+            if ($notify) {
+                $this->notifier->sendAccess($user->load('roles'), $by);
+            }
+
             return $user;
         });
+    }
+
+    /** Renvoie le lien d'accès (lien expiré, e-mail non reçu…). */
+    public function resendAccess(User $user, User $by): \App\Models\EmailLog
+    {
+        $log = $this->notifier->sendAccess($user->load('roles'), $by);
+        activity('users')->causedBy($by)->performedOn($user)->log('Lien d\'accès renvoyé');
+
+        return $log;
     }
 
     /**

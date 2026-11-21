@@ -27,6 +27,7 @@ class CaseService
     public function __construct(
         private readonly NumberingService $numbering,
         private readonly ConflictCheckService $conflicts,
+        private readonly CaseNotifier $notifier,
     ) {}
 
     /**
@@ -60,6 +61,9 @@ class CaseService
                     ->log('Alerte conflit d\'intérêts : la partie adverse correspond à un client du cabinet');
             }
 
+            // Notifications seulement une fois le dossier réellement enregistré (après commit).
+            DB::afterCommit(fn () => $this->notifier->opened($case, $by));
+
             return $case;
         });
     }
@@ -73,6 +77,7 @@ class CaseService
         $this->assertLawyers([$data['lead_lawyer_id'], ...$collaboratorIds]);
 
         return DB::transaction(function () use ($case, $data, $collaboratorIds, $by) {
+            $before = $this->snapshot($case);
             $attributes = $this->attributes($data);
             $feeType = $attributes['fee_type'];
 
@@ -85,8 +90,11 @@ class CaseService
 
             $case->update($attributes);
             $this->syncCollaborators($case, $collaboratorIds, $by);
+            $case->refresh();
 
-            return $case->refresh();
+            $this->notifyChanges($case, $before, $by);
+
+            return $case;
         });
     }
 
@@ -97,6 +105,8 @@ class CaseService
             return;
         }
 
+        $before = $this->snapshot($case);
+
         $case->update([
             'status' => $status,
             'closed_on' => $status->isActive() ? null : ($case->closed_on ?? today()),
@@ -105,6 +115,62 @@ class CaseService
         activity('cases')->causedBy($by)->performedOn($case)
             ->withProperties(['new' => $status->label()])
             ->log('Statut du dossier modifié : '.$status->label());
+
+        $this->notifyChanges($case->refresh(), $before, $by);
+    }
+
+    /**
+     * État notifiable d'un dossier : seuls ces champs justifient d'informer le client et l'équipe.
+     *
+     * @return array<string, mixed>
+     */
+    private function snapshot(LegalCase $case): array
+    {
+        $case->loadMissing(['leadLawyer', 'collaborators']);
+
+        return [
+            'Intitulé' => $case->title,
+            'Matière' => $case->matter->label(),
+            'Juridiction' => $case->jurisdiction,
+            'N° de rôle' => $case->docket_number,
+            'Partie adverse' => $case->adverse_party,
+            'Convention d\'honoraires' => $case->fee_type->label().', '.\App\Support\Money::format((string) $case->fee_amount, $case->currency).$case->fee_type->amountSuffix(),
+            'Statut' => $case->status->label(),
+            'Avocat responsable' => $case->leadLawyer?->name,
+            '_client' => $case->client_id,
+            '_team' => collect([$case->lead_lawyer_id])->merge($case->collaborators()->pluck('users.id'))->map(fn ($id) => (int) $id)->unique()->sort()->values()->all(),
+        ];
+    }
+
+    /**
+     * Compare avant/après et programme les notifications (après commit) s'il y a un changement
+     * significatif ; une modification sans effet réel n'envoie rien.
+     */
+    private function notifyChanges(LegalCase $case, array $before, User $by): void
+    {
+        $case->unsetRelation('collaborators')->unsetRelation('leadLawyer');
+        $after = $this->snapshot($case);
+
+        $changes = [];
+        foreach ($before as $label => $old) {
+            if (str_starts_with($label, '_') || $old === $after[$label]) {
+                continue;
+            }
+            $changes[] = $label.' : '.($old ?? '—').' → '.($after[$label] ?? '—');
+        }
+
+        $added = array_values(array_diff($after['_team'], $before['_team']));
+        $removed = array_values(array_diff($before['_team'], $after['_team']));
+        if ($added !== [] || $removed !== []) {
+            $changes[] = 'Équipe : '.$this->notifier->teamLabel($case->fresh(['leadLawyer', 'collaborators']), forClient: true);
+        }
+        $clientChanged = $before['_client'] !== $after['_client'];
+
+        if ($changes === [] && ! $clientChanged) {
+            return;
+        }
+
+        DB::afterCommit(fn () => $this->notifier->updated($case, $changes, $added, $removed, $clientChanged, $by));
     }
 
     /** @param  array<string, mixed>  $data */

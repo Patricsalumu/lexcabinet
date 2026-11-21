@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\AppointmentStatus;
 use App\Enums\CaseEventType;
+use App\Enums\EmailStatus;
 use App\Enums\Role;
 use App\Models\Appointment;
 use App\Models\CaseEvent;
@@ -11,6 +12,9 @@ use App\Models\EmailLog;
 use App\Models\EmailTemplate;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Rappels automatiques (NOT-02) et récapitulatif quotidien des avocats (NOT-04).
@@ -45,13 +49,42 @@ class ReminderService
             ->orderBy('starts_at')
             ->get();
 
+        $done = 0;
         foreach ($appointments as $appointment) {
-            $this->emails->send(EmailTemplate::REMINDER, $appointment->client, $this->emails->appointmentVars($appointment), $appointment,
-                [['type' => 'ics', 'method' => IcsGenerator::REQUEST, 'name' => 'rendez-vous.ics']], $by);
-            $appointment->forceFill(['reminder_sent_at' => $now])->saveQuietly();
+            $done += $this->remind($appointment, 'reminder_sent_at', $now, fn () => $this->emails->send(
+                EmailTemplate::REMINDER, $appointment->client, $this->emails->appointmentVars($appointment), $appointment,
+                [['type' => 'ics', 'method' => IcsGenerator::REQUEST, 'name' => 'rendez-vous.ics']], $by,
+            ));
         }
 
-        return $appointments->count();
+        return $done;
+    }
+
+    /**
+     * Crée l'e-mail et marque le rappel « déclenché » dans une même transaction : le marqueur
+     * n'est posé que si l'e-mail est bien journalisé et mis en file (après commit). Si le worker
+     * échoue définitivement, EmailService::recordFailure efface le marqueur pour une nouvelle
+     * tentative au prochain passage. Une erreur sur un rendez-vous n'arrête pas les suivants.
+     */
+    private function remind(Appointment $appointment, string $marker, Carbon $now, \Closure $send): int
+    {
+        $template = $marker === 'reminder_sent_at' ? EmailTemplate::REMINDER : EmailTemplate::REMINDER_SOON;
+        if ($this->emails->automaticAttempts($template, $appointment->getMorphClass(), $appointment->id) >= EmailService::MAX_AUTOMATIC_ATTEMPTS) {
+            return 0;
+        }
+
+        try {
+            DB::transaction(function () use ($appointment, $marker, $now, $send) {
+                $send();
+                $appointment->forceFill([$marker => $now])->saveQuietly();
+            });
+
+            return 1;
+        } catch (Throwable $e) {
+            Log::error("Rappel non créé pour le rendez-vous {$appointment->id} : {$e->getMessage()}");
+
+            return 0;
+        }
     }
 
     /**
@@ -75,12 +108,14 @@ class ReminderService
             ->get()
             ->filter(fn (Appointment $a) => $a->created_at->lt($a->starts_at->copy()->subHours($hours)));
 
+        $done = 0;
         foreach ($appointments as $appointment) {
-            $this->emails->send(EmailTemplate::REMINDER_SOON, $appointment->client, $this->emails->appointmentVars($appointment), $appointment);
-            $appointment->forceFill(['short_reminder_sent_at' => $now])->saveQuietly();
+            $done += $this->remind($appointment, 'short_reminder_sent_at', $now, fn () => $this->emails->send(
+                EmailTemplate::REMINDER_SOON, $appointment->client, $this->emails->appointmentVars($appointment), $appointment,
+            ));
         }
 
-        return $appointments->count();
+        return $done;
     }
 
     /**
@@ -99,13 +134,14 @@ class ReminderService
         $lawyers = User::query()->role(Role::Lawyer->value)->where('is_active', true)->orderBy('name')->get();
 
         foreach ($lawyers as $lawyer) {
-            $already = EmailLog::query()
+            // Un seul récapitulatif par jour ; s'il a échoué, nouvelle tentative (3 au plus).
+            $today = EmailLog::query()
                 ->where('template_key', EmailTemplate::RECAP)
                 ->where('related_type', $lawyer->getMorphClass())
                 ->where('related_id', $lawyer->id)
                 ->whereDate('created_at', $now->toDateString())
-                ->exists();
-            if ($already) {
+                ->pluck('status');
+            if ($today->contains(fn ($s) => $s !== EmailStatus::Failed) || $today->count() >= EmailService::MAX_AUTOMATIC_ATTEMPTS) {
                 continue;
             }
 
@@ -114,12 +150,17 @@ class ReminderService
                 continue;
             }
 
-            $this->emails->send(EmailTemplate::RECAP, $lawyer, [
-                'avocat' => $lawyer->name,
-                'date' => $now->translatedFormat('l j F Y'),
-                'liste' => implode("\n", $items),
-            ], $lawyer, [], $by);
-            $sent++;
+            try {
+                $this->emails->send(EmailTemplate::RECAP, $lawyer, [
+                    'avocat' => $lawyer->name,
+                    'destinataire' => $lawyer->name,
+                    'date' => $now->translatedFormat('l j F Y'),
+                    'liste' => implode("\n", $items),
+                ], $lawyer, [], $by);
+                $sent++;
+            } catch (Throwable $e) {
+                Log::error("Récapitulatif non créé pour {$lawyer->email} : {$e->getMessage()}");
+            }
         }
 
         return $sent;

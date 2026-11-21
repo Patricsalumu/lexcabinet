@@ -41,7 +41,7 @@
                     @error('phone') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <label for="u-password" class="{{ $label }}">{{ $editingId ? 'Nouveau mot de passe (laisser vide pour ne pas changer)' : 'Mot de passe initial' }}</label>
+                    <label for="u-password" class="{{ $label }}">{{ $editingId ? 'Nouveau mot de passe (laisser vide pour ne pas changer)' : 'Mot de passe (facultatif : sinon, l’utilisateur le définit lui-même par le lien reçu par e-mail)' }}</label>
                     <input id="u-password" type="password" wire:model="password" autocomplete="new-password" class="{{ $input }}">
                     @error('password') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                 </div>
@@ -108,6 +108,9 @@
                                 <button type="button" wire:click="edit({{ $user->id }})" class="{{ $btn }}">Modifier</button>
                                 @if ($user->isLocked())
                                     <button type="button" wire:click="unlock({{ $user->id }})" class="{{ $btn }}">Déverrouiller</button>
+                                @endif
+                                @if ($user->is_active && ! $user->is(auth()->user()))
+                                    <button type="button" wire:click="resendAccess({{ $user->id }})" wire:confirm="Envoyer à {{ $user->name }} un nouveau lien pour définir son mot de passe ?" class="{{ $btn }}">Envoyer le lien d'accès</button>
                                 @endif
                                 @if ($user->hasTwoFactorEnabled() && ! $user->is(auth()->user()))
                                     <button type="button" wire:click="resetTwoFactor({{ $user->id }})" wire:confirm="Réinitialiser la double authentification de {{ $user->name }} ?" class="{{ $btn }}">Réinitialiser 2FA</button>

@@ -26,10 +26,33 @@ class EmailTemplate extends Model
 
     public const RECAP = 'recap';
 
+    public const APPOINTMENT_UPDATED = 'appointment_updated';
+
+    public const ACCOUNT_CREATED = 'account_created';
+
+    public const CASE_CREATED_ADMIN = 'case_created_admin';
+
+    public const CASE_CREATED_CLIENT = 'case_created_client';
+
+    public const CASE_CREATED_LAWYER = 'case_created_lawyer';
+
+    public const CASE_UPDATED_CLIENT = 'case_updated_client';
+
+    public const CASE_UPDATED_LAWYER = 'case_updated_lawyer';
+
+    public const CASE_LAWYER_ADDED = 'case_lawyer_added';
+
+    public const CASE_LAWYER_REMOVED = 'case_lawyer_removed';
+
+    /** Modèles réservés aux avocats associés au dossier : jamais relancés vers un avocat retiré. */
+    public const CASE_LAWYER_TEMPLATES = [self::CASE_CREATED_LAWYER, self::CASE_UPDATED_LAWYER, self::CASE_LAWYER_ADDED];
+
     /** Variables utilisables dans les modèles (NOT-06). */
     public const VARIABLES = [
-        'client', 'avocat', 'date', 'heure', 'lieu', 'objet', 'cabinet', 'tel_cabinet',
-        'numero', 'montant', 'echeance', 'banque', 'mode', 'liste',
+        'client', 'avocat', 'date', 'heure', 'lieu', 'objet', 'cabinet', 'tel_cabinet', 'email_cabinet',
+        'adresse_cabinet', 'coordonnees_cabinet', 'lien_application', 'numero', 'montant', 'devise',
+        'echeance', 'banque', 'mode', 'liste', 'destinataire', 'email', 'roles', 'lien', 'validite',
+        'reference', 'dossier', 'avocats', 'qualite', 'createur', 'prise_en_charge', 'modifications',
     ];
 
     protected $fillable = ['key', 'name', 'subject', 'body', 'updated_by'];

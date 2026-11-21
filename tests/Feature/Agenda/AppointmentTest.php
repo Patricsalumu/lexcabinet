@@ -113,7 +113,7 @@ it('libère le créneau d\'un rendez-vous annulé ou reporté', function () {
     expect($first->fresh()->status)->toBe(AppointmentStatus::Cancelled);
 });
 
-it('envoie une nouvelle confirmation (.ics version 1) quand le rendez-vous est modifié', function () {
+it('envoie un e-mail de modification (.ics version 1) quand le rendez-vous est modifié', function () {
     $secretary = userWithRoles(Role::Secretary);
     $lawyer = userWithRoles(Role::Lawyer);
     $client = Client::factory()->create();
@@ -125,8 +125,11 @@ it('envoie une nouvelle confirmation (.ics version 1) quand le rendez-vous est m
         ->call('save')
         ->assertHasNoErrors();
 
+    $update = EmailLog::query()->where('template_key', 'appointment_updated')->sole();
     expect($appointment->fresh()->ics_sequence)->toBe(1)
-        ->and(EmailLog::query()->where('template_key', 'confirmation')->count())->toBe(2);
+        ->and(EmailLog::query()->where('template_key', 'confirmation')->count())->toBe(1)
+        ->and($update->subject)->toBe('Votre rendez-vous a été modifié : mardi 10 novembre 2026 à 15h00')
+        ->and($update->body)->toContain('Heure : 15h00');
 
     $ics = collect(sentMessages()->last()->getOriginalMessage()->getAttachments())->first()->getBody();
     expect($ics)->toContain('SEQUENCE:1')->toContain('DTSTART:20261110T140000Z');
@@ -135,7 +138,7 @@ it('envoie une nouvelle confirmation (.ics version 1) quand le rendez-vous est m
     Livewire::actingAs($secretary)->test(AppointmentForm::class, ['appointment' => $appointment->fresh()])
         ->set('internal_notes', 'Apporter le dossier papier')
         ->call('save');
-    expect(EmailLog::query()->where('template_key', 'confirmation')->count())->toBe(2);
+    expect(EmailLog::query()->count())->toBe(2);
 });
 
 it('prévient le client d\'une annulation ou d\'un report, avec un .ics d\'annulation', function (string $status, string $template) {

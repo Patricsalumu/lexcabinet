@@ -2,10 +2,10 @@
 
 namespace App\Mail;
 
-use App\Enums\EmailStatus;
 use App\Models\Appointment;
 use App\Models\EmailLog;
 use App\Models\Invoice;
+use App\Services\EmailService;
 use App\Services\IcsGenerator;
 use App\Services\InvoicePdf;
 use App\Services\SettingsService;
@@ -35,7 +35,14 @@ class TemplatedMail extends Mailable implements ShouldQueue
     /** @var list<int> secondes entre deux tentatives */
     public array $backoff = [60, 300];
 
-    public function __construct(public readonly int $emailLogId) {}
+    /**
+     * Le job n'entre dans la file qu'après le commit de la transaction en cours : jamais
+     * d'e-mail pour une opération annulée, ni de job traité avant que son journal soit visible.
+     */
+    public function __construct(public readonly int $emailLogId)
+    {
+        $this->afterCommit();
+    }
 
     public function envelope(): Envelope
     {
@@ -51,9 +58,15 @@ class TemplatedMail extends Mailable implements ShouldQueue
         );
     }
 
+    /** Transport réellement utilisé, fixé par Laravel au moment de la mise en file. */
+    public const MAILER_HEADER = 'X-LexCabinet-Mailer';
+
     public function headers(): Headers
     {
-        return new Headers(text: [self::LOG_HEADER => (string) $this->emailLogId]);
+        return new Headers(text: [
+            self::LOG_HEADER => (string) $this->emailLogId,
+            self::MAILER_HEADER => (string) ($this->mailer ?? config('mail.default')),
+        ]);
     }
 
     public function content(): Content
@@ -103,10 +116,7 @@ class TemplatedMail extends Mailable implements ShouldQueue
     /** Appelé après le dernier échec : l'e-mail est marqué « Échec » avec l'erreur. */
     public function failed(Throwable $e): void
     {
-        EmailLog::query()->whereKey($this->emailLogId)->update([
-            'status' => EmailStatus::Failed->value,
-            'reason' => mb_substr($e->getMessage(), 0, 1000),
-        ]);
+        app(EmailService::class)->recordFailure($this->emailLogId, $e);
     }
 
     private function log(): EmailLog

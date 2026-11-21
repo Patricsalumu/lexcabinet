@@ -46,7 +46,7 @@ class AppointmentService
     {
         $attributes = $this->attributes($data);
 
-        DB::transaction(function () use ($appointment, $attributes) {
+        DB::transaction(function () use ($appointment, $attributes, $by) {
             $this->assertSlotIsFree($attributes['lawyer_id'], $attributes['starts_at'], $attributes['ends_at'], $appointment->id);
             $appointment->fill($attributes);
 
@@ -56,15 +56,23 @@ class AppointmentService
                 if ($appointment->isDirty('starts_at')) {
                     $appointment->reminder_sent_at = null;
                     $appointment->short_reminder_sent_at = null;
+
+                    // Report : un rendez-vous « reporté » qui reçoit une nouvelle date est replanifié.
+                    if ($appointment->status === AppointmentStatus::Postponed) {
+                        $appointment->status = AppointmentStatus::Planned;
+                    }
                 }
             }
 
             $appointment->save();
-        });
 
-        if ($appointment->wasChanged(self::NOTIFIED_FIELDS) && $appointment->status->expectsReminder()) {
-            $this->sendConfirmation($appointment, $by);
-        }
+            // Le client reçoit les nouvelles informations et un .ics mis à jour (SEQUENCE incrémentée).
+            // Journalisé dans la transaction, envoyé après son commit.
+            if ($appointment->wasChanged(self::NOTIFIED_FIELDS) && $appointment->status->expectsReminder()) {
+                $this->emails->send(EmailTemplate::APPOINTMENT_UPDATED, $appointment->client, $this->emails->appointmentVars($appointment), $appointment,
+                    [['type' => 'ics', 'method' => IcsGenerator::REQUEST, 'name' => 'rendez-vous.ics']], $by);
+            }
+        });
 
         return $appointment;
     }
@@ -76,7 +84,7 @@ class AppointmentService
             return;
         }
 
-        DB::transaction(function () use ($appointment, $status) {
+        DB::transaction(function () use ($appointment, $status, $by) {
             if ($status->occupiesSlot() && ! $appointment->status->occupiesSlot()) {
                 $this->assertSlotIsFree($appointment->lawyer_id, $appointment->starts_at, $appointment->ends_at, $appointment->id);
             }
@@ -86,18 +94,18 @@ class AppointmentService
                 $appointment->ics_sequence++;
             }
             $appointment->save();
+
+            $template = match ($status) {
+                AppointmentStatus::Cancelled => EmailTemplate::CANCELLATION,
+                AppointmentStatus::Postponed => EmailTemplate::POSTPONEMENT,
+                default => null,
+            };
+
+            if ($template) {
+                $this->emails->send($template, $appointment->client, $this->emails->appointmentVars($appointment), $appointment,
+                    [['type' => 'ics', 'method' => IcsGenerator::CANCEL, 'name' => 'rendez-vous.ics']], $by);
+            }
         });
-
-        $template = match ($status) {
-            AppointmentStatus::Cancelled => EmailTemplate::CANCELLATION,
-            AppointmentStatus::Postponed => EmailTemplate::POSTPONEMENT,
-            default => null,
-        };
-
-        if ($template) {
-            $this->emails->send($template, $appointment->client, $this->emails->appointmentVars($appointment), $appointment,
-                [['type' => 'ics', 'method' => IcsGenerator::CANCEL, 'name' => 'rendez-vous.ics']], $by);
-        }
     }
 
     /** Confirmation avec .ics, à la création ou à la modification (NOT-01, NOT-08). */

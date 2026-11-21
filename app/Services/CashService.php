@@ -491,6 +491,7 @@ class CashService
             'numero' => $movement->receipt_number,
             'montant' => Money::format((string) $movement->amount, $movement->currency),
             'mode' => $movement->mode->label(),
+            'devise' => $movement->currency->value,
         ], $movement, [['type' => 'receipt_pdf', 'name' => $movement->receipt_number.'.pdf']], $by);
     }
 

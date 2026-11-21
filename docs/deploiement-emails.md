@@ -1,0 +1,92 @@
+# E-mails de LexCabinet : mise en service sur le VPS
+
+Tous les e-mails métier (rendez-vous, rappels, récapitulatifs, factures, reçus, dossiers, comptes) passent par la **file d'attente `database`** : l'application enregistre l'e-mail dans `email_logs` (« En file d'attente ») et un job dans la table `jobs`. **Un worker doit tourner en permanence** pour les envoyer. Sans worker, les e-mails restent « En file d'attente » indéfiniment.
+
+La réinitialisation du mot de passe, elle, est envoyée immédiatement par Laravel (hors file) : qu'elle fonctionne prouve que le SMTP est bon, pas que le worker tourne.
+
+## 1. Configuration `.env` (production)
+
+```dotenv
+APP_URL=https://votre-domaine            # utilisé dans les liens des e-mails
+QUEUE_CONNECTION=database
+MAIL_MAILER=smtp                         # surtout pas « log » ni « array »
+MAIL_HOST=…
+MAIL_PORT=587
+MAIL_SCHEME=null                         # ou « smtps » pour le port 465
+MAIL_USERNAME=…
+MAIL_PASSWORD=…
+MAIL_FROM_ADDRESS="contact@votre-domaine"
+MAIL_FROM_NAME="${APP_NAME}"
+ADMIN_TWO_FACTOR=false
+```
+
+L'adresse d'expédition affichée est celle des Paramètres du cabinet (« E-mail d'envoi ») : elle doit être autorisée par le serveur SMTP (SPF/DKIM du domaine).
+
+Après toute modification du `.env` :
+
+```bash
+php artisan config:cache
+php artisan queue:restart
+```
+
+Important : le transport est fixé au moment où l'e-mail est mis en file. Un e-mail mis en file avant la correction garde l'ancien transport (ex. `log`) ; utilisez « Relancer l'envoi » dans E-mails > Journal pour le renvoyer.
+
+## 2. Installer les nouveaux modèles d'e-mails (sans écraser les existants)
+
+```bash
+php artisan migrate --force
+php artisan db:seed --class=EmailTemplateSeeder --force
+```
+
+Le seeder n'ajoute que les modèles absents ; un modèle personnalisé n'est jamais modifié. (Un modèle manquant est de toute façon créé automatiquement au premier envoi.)
+
+## 3. Worker avec Supervisor
+
+Vérifier que Supervisor est installé : `supervisorctl version`. Sinon : `sudo apt install supervisor`.
+
+Copier `deploy/supervisor/lexcabinet-worker.conf` dans `/etc/supervisor/conf.d/`, adapter le chemin et l'utilisateur, puis :
+
+```bash
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl status lexcabinet-worker:*
+```
+
+Un seul processus suffit. À chaque déploiement de code : `php artisan queue:restart` (Supervisor relance le worker).
+
+## 4. Planificateur (rappels, récapitulatif, abonnements)
+
+Dans la crontab de l'utilisateur web (`sudo crontab -u www-data -e`) :
+
+```cron
+* * * * * cd /var/www/lexcabinet && php artisan schedule:run >> /dev/null 2>&1
+```
+
+## 5. Diagnostic
+
+```bash
+php artisan lexcabinet:mail-check                         # transport, file, worker, échecs
+php artisan lexcabinet:mail-check --send=vous@exemple.cd  # e-mail de test immédiat par le SMTP
+php artisan queue:failed                                   # détail des jobs en échec
+php artisan queue:retry all                                # relancer les jobs en échec
+tail -f storage/logs/worker.log storage/logs/laravel.log
+```
+
+`mail-check` signale une erreur si des jobs attendent depuis plus de 5 minutes (aucun worker actif).
+
+Permissions : `storage/` et `bootstrap/cache/` doivent appartenir à l'utilisateur du worker et de PHP-FPM :
+
+```bash
+sudo chown -R www-data:www-data storage bootstrap/cache
+```
+
+## 6. Statuts du journal d'envoi
+
+| Statut | Signification |
+| --- | --- |
+| En file d'attente | Enregistré, attend le worker |
+| Envoyé | Accepté par le serveur SMTP (le motif précise le transport) |
+| Échec | 3 tentatives échouées (1 min puis 5 min d'intervalle) ; erreur indiquée ; relance possible |
+| Non envoyé | Aucun envoi tenté : consentement refusé, adresse absente, compte désactivé, avocat retiré du dossier… |
+
+« Envoyé » signifie remis au serveur d'envoi ; la réception dépend ensuite du serveur du destinataire (vérifier aussi les indésirables).

@@ -156,6 +156,7 @@ class InvoiceService
             'numero' => $invoice->number,
             'montant' => Money::format((string) $invoice->total, $invoice->currency),
             'echeance' => $invoice->due_date->format('d/m/Y'),
+            'devise' => $invoice->currency->value,
         ], $invoice, [['type' => 'invoice_pdf', 'name' => $invoice->number.'.pdf']], $by);
     }
 }

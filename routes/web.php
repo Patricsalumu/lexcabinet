@@ -29,6 +29,7 @@ use App\Livewire\Auth\TwoFactorSetup;
 use App\Livewire\Dashboard;
 use App\Livewire\Emails\EmailLogIndex;
 use App\Livewire\Emails\EmailTemplates;
+use App\Http\Controllers\AccountActivationController;
 use App\Http\Controllers\AccountingExportController;
 use App\Livewire\Accounting\AccountingIndex;
 use App\Livewire\Accounting\ChartOfAccounts;
@@ -41,6 +42,12 @@ Route::redirect('/', '/tableau-de-bord');
 Route::get('connexion/verification', TwoFactorChallenge::class)
     ->middleware('guest')
     ->name('two-factor.challenge');
+
+// Lien d'accès envoyé à la création d'un compte (signature vérifiée dans le contrôleur).
+Route::get('compte/acces/{user}', AccountActivationController::class)
+    ->whereNumber('user')
+    ->middleware('throttle:10,1')
+    ->name('account.activate');
 
 // Compte connecté, actif et non verrouillé.
 Route::middleware(['auth', 'account.usable'])->group(function () {

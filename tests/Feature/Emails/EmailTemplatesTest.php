@@ -16,9 +16,20 @@ it('remplace les variables et laisse intactes les variables inconnues', function
         ->toBe('Bonjour Esther, le lundi à 10h00. {inconnue}');
 });
 
-it('livre les huit modèles du cabinet', function () {
+it('livre tous les modèles du cabinet', function () {
     expect(EmailTemplate::query()->pluck('key')->sort()->values()->all())
-        ->toBe(['cancellation', 'confirmation', 'invoice', 'postponement', 'recap', 'receipt', 'reminder', 'reminder_soon']);
+        ->toBe(collect(\App\Support\EmailTemplateDefaults::all())->keys()->sort()->values()->all())
+        ->and(EmailTemplate::query()->count())->toBe(17);
+});
+
+it('ajoute les nouveaux modèles sans écraser un modèle personnalisé', function () {
+    EmailTemplate::query()->where('key', 'confirmation')->update(['subject' => 'Objet personnalisé']);
+    EmailTemplate::query()->where('key', 'account_created')->delete();
+
+    $this->seed(EmailTemplateSeeder::class);
+
+    expect(EmailTemplate::query()->where('key', 'confirmation')->value('subject'))->toBe('Objet personnalisé')
+        ->and(EmailTemplate::query()->where('key', 'account_created')->exists())->toBeTrue();
 });
 
 it('permet au secrétariat de modifier un modèle, avec trace d\'audit', function () {

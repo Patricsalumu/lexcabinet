@@ -73,7 +73,7 @@ class UserManager extends Component
             'title' => ['nullable', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:150', Rule::unique('users', 'email')->ignore($editing?->id)],
             'phone' => ['nullable', 'string', 'max:30'],
-            'password' => $editing ? ['nullable', Password::min(8)] : ['required', Password::min(8)],
+            'password' => ['nullable', Password::min(8)],
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => [Rule::enum(Role::class)],
         ]);
@@ -88,7 +88,7 @@ class UserManager extends Component
             session()->flash('status', 'Utilisateur mis à jour.');
         } else {
             $users->create($data, $data['roles'], $by);
-            session()->flash('status', 'Utilisateur créé.');
+            session()->flash('status', 'Utilisateur créé. Un e-mail lui a été envoyé avec un lien sécurisé pour définir son mot de passe.');
         }
 
         $this->resetForm();
@@ -101,6 +101,17 @@ class UserManager extends Component
         $this->authorize('update', $user);
 
         $users->setActive($user, ! $user->is_active, auth()->user());
+    }
+
+    public function resendAccess(int $id, UserService $users): void
+    {
+        $user = User::query()->findOrFail($id);
+        $this->authorize('update', $user);
+
+        $log = $users->resendAccess($user, auth()->user());
+        session()->flash('status', $log->status === \App\Enums\EmailStatus::NotSent
+            ? 'Lien d\'accès non envoyé : '.$log->reason
+            : 'Lien d\'accès envoyé à '.$user->email.'.');
     }
 
     public function unlock(int $id, UserService $users): void
