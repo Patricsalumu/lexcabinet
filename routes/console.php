@@ -17,3 +17,6 @@ Schedule::command('lexcabinet:send-daily-recap')->everyFifteenMinutes()->without
 
 // FAC-14 : factures d'abonnement, une fois par jour (sans doublon de période).
 Schedule::command('lexcabinet:bill-subscriptions')->dailyAt('06:00')->withoutOverlapping();
+
+// Conversations : relève des réponses dans la boîte IMAP du cabinet (lecture seule).
+Schedule::command('lexcabinet:fetch-replies')->everyFiveMinutes()->withoutOverlapping();

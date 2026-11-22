@@ -69,6 +69,15 @@
                     @if ($current->sent_at)<dt>Envoyé le</dt><dd>{{ $current->sent_at->format('d/m/Y à H:i') }}</dd>@endif
                     @if ($current->attempts)<dt>Tentatives</dt><dd>{{ $current->attempts }}</dd>@endif
                 </dl>
+                @php
+                    $root = $current->thread_id ? $current->thread_id : $current->id;
+                    $replies = \App\Models\EmailReply::query()->where('thread_id', $root)->count();
+                @endphp
+                @if ($replies > 0)
+                    <p class="mb-3 text-sm">
+                        <a href="{{ route('messages.index', ['c' => $root]) }}" wire:navigate class="font-medium text-indigo-800 underline">Voir la conversation ({{ $replies }} réponse{{ $replies > 1 ? 's' : '' }} reçue{{ $replies > 1 ? 's' : '' }})</a>
+                    </p>
+                @endif
                 <pre class="whitespace-pre-wrap rounded-md border border-slate-200 bg-slate-50 p-4 font-sans text-sm">{{ $current->body }}</pre>
                 @if ($current->attachmentNames())
                     <p class="mt-3 text-sm">Pièces jointes :

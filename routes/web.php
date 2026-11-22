@@ -29,6 +29,8 @@ use App\Livewire\Auth\TwoFactorSetup;
 use App\Livewire\Dashboard;
 use App\Livewire\Emails\EmailLogIndex;
 use App\Livewire\Emails\EmailTemplates;
+use App\Livewire\Messages\ConversationIndex;
+use App\Http\Controllers\ReplyAttachmentController;
 use App\Http\Controllers\AccountActivationController;
 use App\Http\Controllers\AccountingExportController;
 use App\Livewire\Accounting\AccountingIndex;
@@ -111,6 +113,11 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
         });
 
         // E-mails (NOT-06, NOT-07)
+        // Conversations : réponses reçues aux e-mails de l'application (droits vérifiés par le composant).
+        Route::get('messages', ConversationIndex::class)->name('messages.index');
+        Route::get('messages/pieces/{reply}/{index}', ReplyAttachmentController::class)
+            ->whereNumber(['reply', 'index'])->name('messages.attachment');
+
         Route::prefix('emails')->name('emails.')->group(function () {
             Route::get('/', EmailLogIndex::class)->middleware('can:emails.view')->name('index');
             Route::get('modeles', EmailTemplates::class)->middleware('can:email_templates.manage')->name('templates');

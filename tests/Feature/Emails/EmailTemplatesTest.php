@@ -19,7 +19,7 @@ it('remplace les variables et laisse intactes les variables inconnues', function
 it('livre tous les modèles du cabinet', function () {
     expect(EmailTemplate::query()->pluck('key')->sort()->values()->all())
         ->toBe(collect(\App\Support\EmailTemplateDefaults::all())->keys()->sort()->values()->all())
-        ->and(EmailTemplate::query()->count())->toBe(20);
+        ->and(EmailTemplate::query()->count())->toBe(21);
 });
 
 it('ajoute les nouveaux modèles sans écraser un modèle personnalisé', function () {

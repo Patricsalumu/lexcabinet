@@ -89,6 +89,28 @@ class MailCheck extends Command
             $this->components->twoColumnDetail('Dernière erreur', mb_substr((string) $lastFailure->reason, 0, 120));
         }
 
+        $this->newLine();
+        $this->components->twoColumnDetail('<fg=cyan>Réponses (boîte IMAP)</>');
+        $mailbox = app(\App\Services\Mailbox\ImapMailbox::class);
+        if (! $mailbox->isConfigured()) {
+            $this->components->twoColumnDetail('Boîte lue', '<fg=yellow>non configurée (IMAP_HOST, IMAP_USERNAME)</>');
+        } else {
+            $this->components->twoColumnDetail('Boîte lue', (string) config('imap.accounts.default.username').' sur '.config('imap.accounts.default.host'));
+            $this->components->twoColumnDetail('Les clients répondent à', \App\Mail\TemplatedMail::replyAddress());
+            if ($mailbox->address() && strcasecmp($mailbox->address(), \App\Mail\TemplatedMail::replyAddress()) !== 0) {
+                $this->components->warn('Les réponses arrivent dans une autre boîte que celle lue : alignez l\'e-mail du cabinet (Paramètres) et IMAP_USERNAME.');
+                $problems++;
+            }
+            try {
+                $this->components->twoColumnDetail('Connexion', 'réussie ('.implode(', ', $mailbox->folders()).')');
+            } catch (Throwable $e) {
+                $this->components->error('Connexion IMAP impossible : '.$e->getMessage());
+                $problems++;
+            }
+            $this->components->twoColumnDetail('Dernière relève', (string) (\Illuminate\Support\Facades\Cache::get('lexcabinet.replies.last_fetch_at') ?? 'jamais'));
+            $this->components->twoColumnDetail('Réponses importées', (string) \App\Models\EmailReply::query()->count());
+        }
+
         if ($to = $this->option('send')) {
             $this->newLine();
             try {

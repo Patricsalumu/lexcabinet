@@ -37,6 +37,9 @@ class EmailTemplate extends Model
     /** Modèles d'un rendez-vous réservés à l'avocat qui en est chargé : pas de relance vers un autre. */
     public const APPOINTMENT_LAWYER_TEMPLATES = [self::APPOINTMENT_LAWYER, self::APPOINTMENT_LAWYER_UPDATED];
 
+    /** Réponse écrite depuis la messagerie de l'application, dans une conversation. */
+    public const CONVERSATION_REPLY = 'conversation_reply';
+
     public const ACCOUNT_CREATED = 'account_created';
 
     public const CASE_CREATED_ADMIN = 'case_created_admin';
@@ -62,7 +65,7 @@ class EmailTemplate extends Model
         'adresse_cabinet', 'coordonnees_cabinet', 'lien_application', 'numero', 'montant', 'devise',
         'echeance', 'banque', 'mode', 'liste', 'destinataire', 'email', 'roles', 'lien', 'validite',
         'reference', 'dossier', 'avocats', 'qualite', 'createur', 'prise_en_charge', 'modifications',
-        'type', 'contact_client', 'notes', 'evenement',
+        'type', 'contact_client', 'notes', 'evenement', 'sujet', 'message',
     ];
 
     protected $fillable = ['key', 'name', 'subject', 'body', 'updated_by'];

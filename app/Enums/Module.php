@@ -15,6 +15,7 @@ enum Module: string
     case Invoices = 'factures';
     case Cash = 'caisse';
     case Accounting = 'comptabilite';
+    case Messages = 'messages';
     case Emails = 'emails';
     case Settings = 'parametres';
 
@@ -28,6 +29,7 @@ enum Module: string
             self::Invoices => 'Factures',
             self::Cash => 'Caisse',
             self::Accounting => 'Comptabilité',
+            self::Messages => 'Messages',
             self::Emails => 'E-mails',
             self::Settings => 'Paramètres',
         };
@@ -44,6 +46,7 @@ enum Module: string
             self::Invoices => [Permission::InvoicesViewAll, Permission::InvoicesViewOwn],
             self::Cash => [Permission::CashView],
             self::Accounting => [Permission::AccountingView],
+            self::Messages => [Permission::EmailsView, Permission::CasesViewOwn],
             self::Emails => [Permission::EmailsView],
             self::Settings => [Permission::SettingsManage, Permission::UsersManage, Permission::RatesManage, Permission::AuditView],
         };
@@ -57,6 +60,7 @@ enum Module: string
             self::Clients => route('clients.index'),
             self::Cases => route('cases.index'),
             self::Agenda => route('agenda.index'),
+            self::Messages => route('messages.index'),
             self::Emails => route('emails.index'),
             self::Invoices => route('invoices.index'),
             self::Cash => route('cash.index'),
@@ -72,6 +76,7 @@ enum Module: string
             self::Clients => request()->routeIs('clients.*'),
             self::Cases => request()->routeIs('cases.*'),
             self::Agenda => request()->routeIs('agenda.*'),
+            self::Messages => request()->routeIs('messages.*'),
             self::Emails => request()->routeIs('emails.*'),
             self::Invoices => request()->routeIs('invoices.*'),
             self::Cash => request()->routeIs('cash.*'),

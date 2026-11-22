@@ -31,7 +31,7 @@
                        'bg-indigo-50 font-semibold text-slate-900' => $active,
                        'text-slate-600 hover:bg-slate-100 hover:text-slate-900' => ! $active,
                    ])
-                   @if ($active) aria-current="page" @endif>{{ $module->label() }}</a>
+                   @if ($active) aria-current="page" @endif>{{ $module->label() }}@if ($module === Module::Messages && ($unread = app(\App\Services\ConversationService::class)->unreadCount($user)) > 0)<span class="ml-2 rounded-full bg-indigo-700 px-1.5 py-0.5 text-xs font-semibold text-white" aria-label="{{ $unread }} non lue(s)">{{ $unread }}</span>@endif</a>
             @endcan
         @endforeach
     </div>

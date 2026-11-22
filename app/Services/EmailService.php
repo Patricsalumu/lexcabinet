@@ -40,7 +40,7 @@ class EmailService
      * @param  array<string, string|null>  $vars
      * @param  list<array<string, string>>  $attachments
      */
-    public function send(string $templateKey, Client|User $recipient, array $vars, ?Model $related = null, array $attachments = [], ?User $by = null, ?EmailLog $resentFrom = null): EmailLog
+    public function send(string $templateKey, Client|User $recipient, array $vars, ?Model $related = null, array $attachments = [], ?User $by = null, ?EmailLog $resentFrom = null, array $threading = []): EmailLog
     {
         $template = $this->template($templateKey);
 
@@ -69,7 +69,7 @@ class EmailService
             'related_id' => $related?->getKey(),
             'triggered_by' => $by?->id,
             'resent_from_id' => $resentFrom?->id,
-        ]);
+        ] + array_intersect_key($threading, array_flip(['thread_id', 'in_reply_to', 'references'])));
 
         if ($reason === null) {
             Mail::to($recipient->email, $recipient->name)->queue(new TemplatedMail($log->id));
@@ -95,7 +95,7 @@ class EmailService
         $recipient->refresh();
 
         $reason = $this->refusalReason($recipient) ?? $this->confidentialityReason($log, $recipient);
-        $new = $log->replicate(['status', 'reason', 'attempts', 'sent_at', 'resent_from_id', 'triggered_by']);
+        $new = $log->replicate(['status', 'reason', 'attempts', 'sent_at', 'resent_from_id', 'triggered_by', 'message_id']);
         $new->fill([
             'recipient_name' => $recipient->name,
             'recipient_email' => $recipient->email,

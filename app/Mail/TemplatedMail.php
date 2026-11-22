@@ -54,15 +54,24 @@ class TemplatedMail extends Mailable implements ShouldQueue
         $log = $this->log();
         $settings = app(SettingsService::class);
         $from = (string) config('mail.from.address');
-        $firmEmail = (string) $settings->get('firm.email');
+        $replyTo = self::replyAddress();
 
         return new Envelope(
             from: new Address($from, (string) $settings->get('firm.name')),
-            replyTo: filter_var($firmEmail, FILTER_VALIDATE_EMAIL) && strcasecmp($firmEmail, $from) !== 0
-                ? [new Address($firmEmail, (string) $settings->get('firm.name'))]
-                : [],
+            replyTo: strcasecmp($replyTo, $from) !== 0 ? [new Address($replyTo, (string) $settings->get('firm.name'))] : [],
             subject: $log->subject,
         );
+    }
+
+    /**
+     * Adresse où arrivent les réponses des destinataires : l'e-mail du cabinet (paramètres),
+     * à défaut l'expéditeur. C'est la boîte que l'application doit lire (IMAP_USERNAME).
+     */
+    public static function replyAddress(): string
+    {
+        $firmEmail = (string) app(SettingsService::class)->get('firm.email');
+
+        return filter_var($firmEmail, FILTER_VALIDATE_EMAIL) ? $firmEmail : (string) config('mail.from.address');
     }
 
     /** Transport réellement utilisé, fixé par Laravel au moment de la mise en file. */
@@ -70,10 +79,21 @@ class TemplatedMail extends Mailable implements ShouldQueue
 
     public function headers(): Headers
     {
-        return new Headers(text: [
+        $log = EmailLog::query()->find($this->emailLogId);
+        $text = [
             self::LOG_HEADER => (string) $this->emailLogId,
             self::MAILER_HEADER => (string) ($this->mailer ?? config('mail.default')),
-        ]);
+        ];
+        // Réponse dans une conversation : le logiciel de messagerie du destinataire range le message dans le fil.
+        if ($log?->in_reply_to) {
+            $text['In-Reply-To'] = '<'.$log->in_reply_to.'>';
+        }
+
+        return new Headers(
+            messageId: $log?->message_id,
+            references: $log?->referenceIds() ?? [],
+            text: $text,
+        );
     }
 
     public function content(): Content

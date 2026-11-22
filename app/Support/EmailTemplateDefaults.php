@@ -83,6 +83,16 @@ final class EmailTemplateDefaults
                 'body' => "Bonjour {avocat},\n\nVoici vos rendez-vous et audiences du jour :\n{liste}\n\nBonne journée.",
             ],
 
+            // ---------------------------------------------------------------- Conversations
+            EmailTemplate::CONVERSATION_REPLY => [
+                'name' => 'Réponse depuis la messagerie',
+                'subject' => '{sujet}',
+                'body' => "{message}
+
+{createur}
+{cabinet}",
+            ],
+
             // ---------------------------------------------------------------- Comptes utilisateurs
             EmailTemplate::ACCOUNT_CREATED => [
                 'name' => 'Création de compte utilisateur',

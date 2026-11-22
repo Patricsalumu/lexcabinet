@@ -6,11 +6,11 @@ use App\Enums\Role;
 /** Modules visibles attendus pour chaque rôle (prototype corrigé par CLAUDE.md). */
 dataset('menus', [
     'admin' => [[Role::Admin], Module::cases()],
-    'avocat' => [[Role::Lawyer], [Module::Dashboard, Module::Agenda, Module::Clients, Module::Cases, Module::Invoices]],
-    'secretaire' => [[Role::Secretary], [Module::Dashboard, Module::Agenda, Module::Clients, Module::Cases, Module::Emails]],
+    'avocat' => [[Role::Lawyer], [Module::Dashboard, Module::Agenda, Module::Clients, Module::Cases, Module::Invoices, Module::Messages]],
+    'secretaire' => [[Role::Secretary], [Module::Dashboard, Module::Agenda, Module::Clients, Module::Cases, Module::Messages, Module::Emails]],
     'caissier' => [[Role::Cashier], [Module::Dashboard, Module::Invoices, Module::Cash]],
     'comptable' => [[Role::Accountant], [Module::Dashboard, Module::Invoices, Module::Cash, Module::Accounting]],
-    'avocat + secretaire' => [[Role::Lawyer, Role::Secretary], [Module::Dashboard, Module::Agenda, Module::Clients, Module::Cases, Module::Invoices, Module::Emails]],
+    'avocat + secretaire' => [[Role::Lawyer, Role::Secretary], [Module::Dashboard, Module::Agenda, Module::Clients, Module::Cases, Module::Invoices, Module::Messages, Module::Emails]],
 ]);
 
 it('affiche dans le menu les seuls modules autorisés', function (array $roles, array $visible) {

@@ -96,3 +96,39 @@ sudo chown -R www-data:www-data storage bootstrap/cache
 | Non envoyé | Aucun envoi tenté : consentement refusé, adresse absente, compte désactivé, avocat retiré du dossier… |
 
 « Envoyé » signifie remis au serveur d'envoi ; la réception dépend ensuite du serveur du destinataire (vérifier aussi les indésirables).
+
+## 7. Conversations : lire les réponses dans l'application
+
+Les réponses des clients (et des avocats) aux e-mails de l'application sont relevées toutes les
+5 minutes dans la boîte du cabinet et affichées dans le module **Messages**. On peut y répondre ;
+la réponse part par le journal d'envoi habituel et une copie est déposée dans « Envoyés ».
+
+La boîte est lue **sans rien y changer** : les messages ne sont ni supprimés, ni déplacés, ni
+marqués comme lus. On peut donc continuer à les lire dans Roundcube, Gmail ou sur le téléphone.
+Seules les réponses à des e-mails de l'application sont importées ; le reste du courrier est ignoré.
+
+1. **Adresse de réponse** : les clients répondent à l'e-mail du cabinet (Paramètres → Cabinet),
+   à défaut à `MAIL_FROM_ADDRESS`. C'est cette boîte que l'application doit lire. Sur un autre
+   serveur ou un autre domaine, il suffit de changer l'e-mail du cabinet et les variables ci-dessous.
+2. **`.env`** (accès de cette même boîte) :
+   ```
+   IMAP_HOST=mail.exemple.com
+   IMAP_PORT=993
+   IMAP_ENCRYPTION=ssl
+   IMAP_VALIDATE_CERT=true
+   IMAP_USERNAME=adresse@exemple.com
+   IMAP_PASSWORD="mot-de-passe"
+   IMAP_FOLDERS=INBOX
+   IMAP_SENT_FOLDER=Sent
+   ```
+   puis `php artisan config:cache`.
+3. **Vérifier** : `php artisan lexcabinet:mail-check` (section « Réponses ») puis
+   `php artisan lexcabinet:fetch-replies` pour une relève immédiate.
+4. La relève tourne avec le planificateur (section 4) : rien d'autre à installer.
+
+**Gmail** : pour lire la boîte du cabinet dans Gmail, utilisez « Consulter d'autres comptes » en
+cochant **« Laisser un exemplaire du message récupéré sur le serveur »**, ou une redirection.
+Sinon Gmail vide la boîte et l'application ne voit plus les réponses.
+
+Seuls les e-mails envoyés après la mise en service de cette fonction peuvent être rattachés à une
+conversation (ils portent un identifiant que les réponses citent).
