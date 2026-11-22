@@ -14,7 +14,7 @@
                 @foreach ([
                     'name' => 'Nom du cabinet', 'bar' => 'Barreau / n° d\'inscription', 'address' => 'Adresse',
                     'rccm' => 'RCCM', 'id_nat' => 'ID. Nat.', 'nif' => 'NIF', 'phone' => 'Téléphone',
-                    'email' => 'E-mail d\'envoi', 'bank_details' => 'Coordonnées bancaires (factures)',
+                    'email' => 'E-mail du cabinet (adresse de réponse)', 'bank_details' => 'Coordonnées bancaires (factures)',
                 ] as $key => $text)
                     <div @class(['sm:col-span-2' => in_array($key, ['name', 'address', 'bank_details'])])>
                         <label for="firm-{{ $key }}" class="{{ $label }}">{{ $text }}</label>
@@ -118,7 +118,8 @@
                 </div>
                 <p class="mt-4 text-xs text-slate-500">
                     Serveur d'envoi des e-mails : configuré dans le fichier d'environnement du serveur
-                    (actuellement « {{ config('mail.default') }} »).
+                    (actuellement « {{ config('mail.default') }} »). Les e-mails partent de l'adresse
+                    {{ config('mail.from.address') }} (compte d'envoi) ; l'e-mail du cabinet ci-dessus sert d'adresse de réponse.
                 </p>
             </x-lex.panel>
 

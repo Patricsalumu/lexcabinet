@@ -365,6 +365,18 @@ it('met chaque e-mail dans la file database après le commit, et rien en cas d\'
         ->and(logsFor('confirmation')->sole()->status)->toBe(EmailStatus::Sent);
 });
 
+it('envoie depuis MAIL_FROM_ADDRESS, avec l\'e-mail du cabinet en adresse de réponse', function () {
+    config(['mail.from.address' => 'lexcabinet@barapp.cloud']);
+    $appointment = Appointment::factory()->create(['lawyer_id' => userWithRoles(Role::Lawyer)->id]);
+
+    app(AppointmentService::class)->sendConfirmation($appointment);
+
+    $message = collect(app('mail.manager')->mailer('array')->getSymfonyTransport()->messages())->last()->getOriginalMessage();
+    expect($message->getFrom()[0]->getAddress())->toBe('lexcabinet@barapp.cloud')
+        ->and($message->getFrom()[0]->getName())->toBe('Cabinet Mukendi & Associés')
+        ->and($message->getReplyTo()[0]->getAddress())->toBe('contact@mukendi-avocats.example');
+});
+
 it('précise dans le journal qu\'un transport de développement ne délivre rien', function () {
     $appointment = Appointment::factory()->create(['lawyer_id' => userWithRoles(Role::Lawyer)->id]);
 

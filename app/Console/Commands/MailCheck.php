@@ -34,7 +34,19 @@ class MailCheck extends Command
             $this->components->twoColumnDetail('Utilisateur', $smtp['username'] ? (string) $smtp['username'] : '<fg=yellow>aucun</>');
             $this->components->twoColumnDetail('Mot de passe', filled($smtp['password'] ?? null) ? 'renseigné' : '<fg=yellow>vide</>');
         }
-        $this->components->twoColumnDetail('Expéditeur par défaut', (string) config('mail.from.address'));
+        $this->components->twoColumnDetail('Expéditeur (MAIL_FROM_ADDRESS)', (string) config('mail.from.address'));
+        $this->components->twoColumnDetail('Adresse de réponse (e-mail du cabinet)', (string) (app(\App\Services\SettingsService::class)->get('firm.email') ?: '—'));
+        if ($mailer === 'smtp' && filled(config('mail.mailers.smtp.username')) && str_contains((string) config('mail.mailers.smtp.username'), '@')
+            && strcasecmp((string) config('mail.mailers.smtp.username'), (string) config('mail.from.address')) !== 0) {
+            $this->components->warn('MAIL_FROM_ADDRESS diffère du compte SMTP : de nombreux serveurs refusent alors l\'envoi (erreur 550).');
+        }
+
+        // Adresses de démonstration restées en base : les envois vers elles échoueront.
+        $demoUsers = \App\Models\User::query()->where('is_active', true)->where('email', 'like', '%.example')->count();
+        $demoClients = \App\Models\Client::query()->where('email_consent', true)->where('email', 'like', '%.example')->count();
+        if ($demoUsers + $demoClients > 0) {
+            $this->components->warn("Adresses de démonstration (.example) : {$demoUsers} utilisateur(s) actif(s) et {$demoClients} client(s). Corrigez-les ou désactivez ces comptes.");
+        }
         if (in_array($mailer, ['log', 'array'], true)) {
             $this->components->warn("MAIL_MAILER={$mailer} : les e-mails ne sont PAS délivrés, seulement écrits dans le journal. Utilisez smtp en production.");
             $problems++;

@@ -102,7 +102,7 @@ class FirmSettings extends Component
             'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg', 'max:2048'],
         ], [], [
             'firm.name' => 'nom du cabinet',
-            'firm.email' => 'e-mail d\'envoi',
+            'firm.email' => 'e-mail du cabinet',
             'rules.vat_rate' => 'taux de TVA',
             'rules.threshold' => 'seuil de validation',
             'rules.consultation_fee' => 'tarif de consultation',

@@ -20,7 +20,9 @@ MAIL_FROM_NAME="${APP_NAME}"
 ADMIN_TWO_FACTOR=false
 ```
 
-L'adresse d'expédition affichée est celle des Paramètres du cabinet (« E-mail d'envoi ») : elle doit être autorisée par le serveur SMTP (SPF/DKIM du domaine).
+**Expéditeur** : les e-mails partent toujours de `MAIL_FROM_ADDRESS`, qui doit être **l'adresse du compte SMTP** (`MAIL_USERNAME`) ; sinon le serveur refuse l'envoi (« 550 Verification failed for <…> »). L'« E-mail du cabinet » des Paramètres sert d'adresse de réponse (Reply-To) : les clients qui répondent écrivent au cabinet.
+
+**Données de démonstration** : en production, remplacez les adresses `….example` (utilisateurs et clients de démo) par de vraies adresses, ou désactivez ces comptes ; `mail-check` les signale.
 
 Après toute modification du `.env` :
 
@@ -42,6 +44,10 @@ Le seeder n'ajoute que les modèles absents ; un modèle personnalisé n'est jam
 
 ## 3. Worker avec Supervisor
 
+**HestiaCP et panneaux similaires** : les fonctions `pcntl_*` y sont désactivées (`php -i | grep disable_functions`). Le worker et le planificateur plantent alors avec « Call to undefined function pcntl_signal() ». Ajoutez `-d disable_functions=` à **toutes** les commandes `php artisan queue:work` et `schedule:run` (worker Supervisor, cron, lancement manuel) : la restriction est levée pour ces seuls processus, sans toucher à la configuration PHP du serveur. Vérification : `php -d disable_functions= -r 'var_dump(function_exists("pcntl_signal"));'` doit afficher `bool(true)`.
+
+Lancez les commandes artisan avec l'utilisateur du site (`sudo -u <utilisateur> php …`), pas en root, pour que les fichiers de `storage/` gardent le bon propriétaire.
+
 Vérifier que Supervisor est installé : `supervisorctl version`. Sinon : `sudo apt install supervisor`.
 
 Copier `deploy/supervisor/lexcabinet-worker.conf` dans `/etc/supervisor/conf.d/`, adapter le chemin et l'utilisateur, puis :
@@ -59,7 +65,7 @@ Un seul processus suffit. À chaque déploiement de code : `php artisan queue:re
 Dans la crontab de l'utilisateur web (`sudo crontab -u www-data -e`) :
 
 ```cron
-* * * * * cd /var/www/lexcabinet && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /var/www/lexcabinet && /usr/bin/php -d disable_functions= artisan schedule:run >> /dev/null 2>&1
 ```
 
 ## 5. Diagnostic

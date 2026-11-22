@@ -44,16 +44,23 @@ class TemplatedMail extends Mailable implements ShouldQueue
         $this->afterCommit();
     }
 
+    /**
+     * Expéditeur : toujours MAIL_FROM_ADDRESS, l'adresse du compte SMTP authentifié (sinon le
+     * serveur refuse le message, et SPF/DMARC le rejetteraient). L'e-mail du cabinet, s'il est
+     * différent, devient l'adresse de réponse : les clients répondent bien au cabinet.
+     */
     public function envelope(): Envelope
     {
         $log = $this->log();
         $settings = app(SettingsService::class);
+        $from = (string) config('mail.from.address');
+        $firmEmail = (string) $settings->get('firm.email');
 
         return new Envelope(
-            from: new Address(
-                (string) ($settings->get('firm.email') ?: config('mail.from.address')),
-                (string) $settings->get('firm.name'),
-            ),
+            from: new Address($from, (string) $settings->get('firm.name')),
+            replyTo: filter_var($firmEmail, FILTER_VALIDATE_EMAIL) && strcasecmp($firmEmail, $from) !== 0
+                ? [new Address($firmEmail, (string) $settings->get('firm.name'))]
+                : [],
             subject: $log->subject,
         );
     }

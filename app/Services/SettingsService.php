@@ -31,7 +31,7 @@ class SettingsService
         'firm.id_nat' => ['type' => 'string', 'default' => null, 'label' => 'ID. Nat.'],
         'firm.nif' => ['type' => 'string', 'default' => null, 'label' => 'NIF'],
         'firm.phone' => ['type' => 'string', 'default' => null, 'label' => 'Téléphone'],
-        'firm.email' => ['type' => 'string', 'default' => null, 'label' => 'E-mail d\'envoi'],
+        'firm.email' => ['type' => 'string', 'default' => null, 'label' => 'E-mail du cabinet (adresse de réponse)'],
         'firm.bank_details' => ['type' => 'string', 'default' => null, 'label' => 'Coordonnées bancaires'],
         'firm.logo_path' => ['type' => 'string', 'default' => null, 'label' => 'Logo'],
 
