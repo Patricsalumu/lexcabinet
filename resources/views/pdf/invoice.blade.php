@@ -97,7 +97,12 @@
             au taux de {{ Money::formatRate((string) $invoice->exchange_rate) }} FC pour 1 $.
         </p>
     @endif
-    <p class="small">Paiement : espèces au cabinet, virement ({{ $firm['firm.bank_details'] }}) ou mobile money, en rappelant le numéro de la facture.</p>
+    @php $methods = app(App\Services\EmailSignature::class)->paymentLines(); @endphp
+    @if ($methods)
+        <p class="small"><b>Moyens de paiement</b> (rappelez le numéro de la facture) :<br>{!! implode('<br>', array_map('e', $methods)) !!}</p>
+    @else
+        <p class="small">Paiement : espèces au cabinet, virement ({{ $firm['firm.bank_details'] }}) ou mobile money, en rappelant le numéro de la facture.</p>
+    @endif
     @if ($invoice->notes)<p class="small">{{ $invoice->notes }}</p>@endif
 
     <div class="foot">{{ $firm['firm.name'] }} · {{ $firm['firm.address'] }}</div>

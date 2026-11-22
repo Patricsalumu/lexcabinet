@@ -13,12 +13,20 @@
                 @if ($firm['firm.bar'])<br><span style="font-size:12px;color:#585f77;">{{ $firm['firm.bar'] }}</span>@endif
             </td>
         </tr>
+        @php
+            // La signature (moyens de paiement, adresse, contacts) suit le séparateur des e-mails clients.
+            [$message, $signature] = array_pad(explode(App\Services\EmailSignature::SEPARATOR, $body, 2), 2, null);
+        @endphp
         <tr>
-            <td style="padding:24px;font-size:15px;line-height:1.55;">{!! nl2br(e($body)) !!}</td>
+            <td style="padding:24px;font-size:15px;line-height:1.55;">{!! nl2br(e($message)) !!}</td>
         </tr>
         <tr>
-            <td style="padding:16px 24px;border-top:1px solid #d9dce6;font-size:12px;color:#585f77;">
-                {{ $firm['firm.address'] }}@if ($firm['firm.phone']) · {{ $firm['firm.phone'] }}@endif
+            <td style="padding:16px 24px;border-top:1px solid #d9dce6;font-size:12px;line-height:1.5;color:#585f77;">
+                @if ($signature)
+                    {!! nl2br(e($signature)) !!}
+                @else
+                    {{ $firm['firm.address'] }}@if ($firm['firm.phone']) · {{ $firm['firm.phone'] }}@endif
+                @endif
             </td>
         </tr>
     </table>

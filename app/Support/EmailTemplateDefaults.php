@@ -28,6 +28,11 @@ final class EmailTemplateDefaults
                 'subject' => 'Votre rendez-vous a été modifié : {date} à {heure}',
                 'body' => "Bonjour {client},\n\nVotre rendez-vous avec le cabinet a été modifié. Voici les nouvelles informations :\n\nDate : {date}\nHeure : {heure}\nAvocat : {avocat}\nLieu : {lieu}\nObjet : {objet}\n\nLe fichier joint met à jour ce rendez-vous dans votre agenda.\nPour toute question, répondez à cet e-mail ou appelez le {tel_cabinet}.\n\n{cabinet}",
             ],
+            EmailTemplate::APPOINTMENT_LAWYER => [
+                'name' => 'Nouveau rendez-vous (avocat concerné)',
+                'subject' => 'Nouveau rendez-vous : {client}, le {date} à {heure}',
+                'body' => "Bonjour {avocat},\n\nUn rendez-vous vient d'être inscrit à votre agenda par {createur}.\n\nClient : {client}\nContact : {contact_client}\nDate : {date}\nHeure : {heure}\nType : {type}\nLieu : {lieu}\nObjet : {objet}\nDossier : {dossier}\nNotes internes : {notes}\n\nLe fichier joint ajoute ce rendez-vous à votre agenda.\nConsulter l'agenda : {lien}\n\n{cabinet}",
+            ],
             EmailTemplate::REMINDER => [
                 'name' => 'Rappel de rendez-vous (J-1)',
                 'subject' => 'Rappel : votre rendez-vous de demain à {heure}',

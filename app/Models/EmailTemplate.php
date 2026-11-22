@@ -28,6 +28,8 @@ class EmailTemplate extends Model
 
     public const APPOINTMENT_UPDATED = 'appointment_updated';
 
+    public const APPOINTMENT_LAWYER = 'appointment_lawyer';
+
     public const ACCOUNT_CREATED = 'account_created';
 
     public const CASE_CREATED_ADMIN = 'case_created_admin';
@@ -53,6 +55,7 @@ class EmailTemplate extends Model
         'adresse_cabinet', 'coordonnees_cabinet', 'lien_application', 'numero', 'montant', 'devise',
         'echeance', 'banque', 'mode', 'liste', 'destinataire', 'email', 'roles', 'lien', 'validite',
         'reference', 'dossier', 'avocats', 'qualite', 'createur', 'prise_en_charge', 'modifications',
+        'type', 'contact_client', 'notes',
     ];
 
     protected $fillable = ['key', 'name', 'subject', 'body', 'updated_by'];

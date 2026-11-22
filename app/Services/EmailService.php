@@ -47,12 +47,19 @@ class EmailService
         $vars = $vars + $this->baseVars();
         $reason = $this->refusalReason($recipient);
 
+        // Tout e-mail destiné à un client se termine par la signature du cabinet
+        // (moyens de paiement, adresse, contacts) ; elle est journalisée avec le message.
+        $body = EmailTemplate::render($template->body, $vars);
+        if ($recipient instanceof Client) {
+            $body = app(EmailSignature::class)->append($body);
+        }
+
         $log = EmailLog::query()->create([
             'template_key' => $templateKey,
             'recipient_name' => $recipient->name,
             'recipient_email' => $recipient->email,
             'subject' => EmailTemplate::render($template->subject, $vars),
-            'body' => EmailTemplate::render($template->body, $vars),
+            'body' => $body,
             'attachments' => $attachments,
             'status' => $reason ? EmailStatus::NotSent : EmailStatus::Queued,
             'reason' => $reason,
@@ -220,6 +227,12 @@ class EmailService
      */
     private function confidentialityReason(EmailLog $log, Client|User $recipient): ?string
     {
+        if ($recipient instanceof User && $log->template_key === EmailTemplate::APPOINTMENT_LAWYER) {
+            $appointment = Appointment::query()->find($log->related_id);
+
+            return $appointment && $appointment->lawyer_id === $recipient->id ? null : 'Ce rendez-vous n\'est plus attribué à ce destinataire.';
+        }
+
         if (! $recipient instanceof User || $log->related_type !== (new LegalCase)->getMorphClass()) {
             return null;
         }

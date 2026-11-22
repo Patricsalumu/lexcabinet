@@ -65,9 +65,9 @@ it('scénario 1 : la création d\'un RDV envoie la confirmation avec le fichier 
         ->and($log->body)->toContain($lawyer->name)
         ->and($log->sent_at)->not->toBeNull();
 
-    $message = sentMessages()->last()->getOriginalMessage();
+    $message = sentMessages()->map->getOriginalMessage()->first(fn ($m) => $m->getTo()[0]->getAddress() === 'esther.kalala@example.cd');
     $ics = collect($message->getAttachments())->first();
-    expect($message->getTo()[0]->getAddress())->toBe('esther.kalala@example.cd')
+    expect($message)->not->toBeNull()
         ->and($ics->getFilename())->toBe('rendez-vous.ics')
         ->and($ics->getMediaSubtype())->toBe('calendar')
         ->and($ics->getBody())->toContain('METHOD:REQUEST')
@@ -138,7 +138,7 @@ it('envoie un e-mail de modification (.ics version 1) quand le rendez-vous est m
     Livewire::actingAs($secretary)->test(AppointmentForm::class, ['appointment' => $appointment->fresh()])
         ->set('internal_notes', 'Apporter le dossier papier')
         ->call('save');
-    expect(EmailLog::query()->count())->toBe(2);
+    expect(EmailLog::query()->count())->toBe(3);   // confirmation, avocat, modification
 });
 
 it('prévient le client d\'une annulation ou d\'un report, avec un .ics d\'annulation', function (string $status, string $template) {
@@ -164,10 +164,42 @@ it('n\'envoie rien à un client sans consentement, mais journalise le motif', fu
 
     bookAs($secretary, $client, userWithRoles(Role::Lawyer), '2026-11-10', '10:00')->assertHasNoErrors();
 
-    $log = EmailLog::query()->firstOrFail();
+    $log = EmailLog::query()->where('template_key', 'confirmation')->firstOrFail();
     expect($log->status)->toBe(EmailStatus::NotSent)
         ->and($log->reason)->toBe('Le client n\'a pas accepté les notifications par e-mail.')
-        ->and(sentMessages())->toBeEmpty();
+        // Seul l'avocat est prévenu ; rien ne part vers le client.
+        ->and(sentMessages())->toHaveCount(1)
+        ->and(sentMessages()->first()->getOriginalMessage()->getTo()[0]->getAddress())->not->toBe($client->email);
+});
+
+it('prévient l\'avocat concerné à la création du rendez-vous, avec le .ics', function () {
+    $secretary = userWithRoles(Role::Secretary);
+    $lawyer = userWithRoles(Role::Lawyer);
+    $other = userWithRoles(Role::Lawyer);
+    $client = Client::factory()->create(['name' => 'Esther Kalala', 'phone' => '+243 85 220 7731', 'email' => 'esther.kalala@example.cd']);
+
+    Livewire::actingAs($secretary)->test(AppointmentForm::class)
+        ->set('client_id', (string) $client->id)->set('lawyer_id', (string) $lawyer->id)
+        ->set('date', '2026-11-10')->set('time', '10:00')->set('subject', 'Stratégie de conciliation')
+        ->set('internal_notes', 'Apporter le contrat de travail')
+        ->call('save')->assertHasNoErrors();
+
+    $log = EmailLog::query()->where('template_key', 'appointment_lawyer')->sole();
+    expect($log->recipient_email)->toBe($lawyer->email)
+        ->and($log->status)->toBe(EmailStatus::Sent)
+        ->and($log->subject)->toBe('Nouveau rendez-vous : Esther Kalala, le mardi 10 novembre 2026 à 10h00')
+        ->and($log->body)->toContain('+243 85 220 7731')->toContain('Stratégie de conciliation')
+        ->toContain('Apporter le contrat de travail')->toContain($secretary->name)
+        ->and($log->body)->not->toContain('Moyens de paiement')   // pas de signature client
+        ->and(EmailLog::query()->where('recipient_email', $other->email)->exists())->toBeFalse();
+
+    $message = sentMessages()->map->getOriginalMessage()->first(fn ($m) => $m->getTo()[0]->getAddress() === $lawyer->email);
+    expect(collect($message->getAttachments())->first()->getFilename())->toBe('rendez-vous.ics');
+
+    // Relance refusée si le rendez-vous a changé d'avocat.
+    Appointment::query()->update(['lawyer_id' => $other->id]);
+    $log->forceFill(['status' => EmailStatus::Failed])->save();
+    expect(app(\App\Services\EmailService::class)->resend($log, userWithRoles(Role::Admin))->status)->toBe(EmailStatus::NotSent);
 });
 
 it('crée un prospect depuis l\'agenda, avec contrôle des conflits', function () {

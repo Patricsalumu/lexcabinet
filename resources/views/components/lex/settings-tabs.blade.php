@@ -3,7 +3,7 @@
         ['settings.firm', 'Cabinet', 'settings.manage'],
         ['settings.users', 'Utilisateurs et rôles', 'users.manage'],
         ['settings.rates', 'Taux de change', 'rates.manage'],
-        ['settings.treasury', 'Comptes de trésorerie', 'settings.manage'],
+        ['settings.treasury', 'Moyens de paiement', 'settings.manage'],
         ['settings.audit', 'Journal d\'audit', 'audit.view'],
     ];
 @endphp

@@ -27,18 +27,38 @@ class AppointmentService
     {
         $attributes = $this->attributes($data);
 
-        $appointment = DB::transaction(function () use ($attributes, $by) {
+        return DB::transaction(function () use ($attributes, $by) {
             $this->assertSlotIsFree($attributes['lawyer_id'], $attributes['starts_at'], $attributes['ends_at']);
 
-            return Appointment::query()->create($attributes + [
+            $appointment = Appointment::query()->create($attributes + [
                 'status' => AppointmentStatus::Planned,
                 'created_by' => $by->id,
             ]);
+
+            // Deux e-mails, journalisés avec le rendez-vous et envoyés après le commit :
+            // la confirmation au client et l'information de l'avocat concerné.
+            $this->sendConfirmation($appointment, $by);
+            $this->notifyLawyer($appointment, $by);
+
+            return $appointment;
         });
+    }
 
-        $this->sendConfirmation($appointment, $by);
+    /** Informe l'avocat du rendez-vous inscrit à son agenda, avec le fichier .ics. */
+    public function notifyLawyer(Appointment $appointment, ?User $by = null): void
+    {
+        $appointment->loadMissing(['client', 'lawyer', 'legalCase']);
+        $client = $appointment->client;
 
-        return $appointment;
+        $this->emails->send(EmailTemplate::APPOINTMENT_LAWYER, $appointment->lawyer, $this->emails->appointmentVars($appointment) + [
+            'destinataire' => $appointment->lawyer->name,
+            'type' => $appointment->type->label(),
+            'contact_client' => implode(' · ', array_filter([$client->phone, $client->email])) ?: '—',
+            'dossier' => $appointment->legalCase ? $appointment->legalCase->reference.' · '.$appointment->legalCase->title : 'aucun',
+            'notes' => $appointment->internal_notes ?: '—',
+            'createur' => $by?->name ?? 'LexCabinet',
+            'lien' => route('agenda.index', ['date' => $appointment->starts_at->toDateString(), 'view' => 'day']),
+        ], $appointment, [['type' => 'ics', 'method' => IcsGenerator::REQUEST, 'name' => 'rendez-vous.ics']], $by);
     }
 
     /** @param  array<string, mixed>  $data */

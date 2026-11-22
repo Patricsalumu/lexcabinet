@@ -34,10 +34,13 @@ class CashSeeder extends Seeder
         $client = fn (string $name) => Client::query()->where('name', $name)->firstOrFail();
         $invoice = fn (int $n) => Invoice::query()->where('number', sprintf('FAC-%d-%05d', now()->year, $n))->firstOrFail();
 
-        $usd = TreasuryAccount::query()->create(['name' => 'Caisse USD', 'type' => TreasuryType::Cash, 'currency' => Currency::USD, 'ledger_code' => '5711']);
+        $usd = TreasuryAccount::query()->create(['name' => 'Espèces au cabinet', 'type' => TreasuryType::Cash, 'currency' => Currency::USD, 'ledger_code' => '5711',
+            'payment_details' => 'en USD ou en CDF, du lundi au vendredi de 8 h à 17 h', 'show_to_clients' => true]);
         $cdf = TreasuryAccount::query()->create(['name' => 'Caisse CDF', 'type' => TreasuryType::Cash, 'currency' => Currency::CDF, 'ledger_code' => '5712']);
-        $bank = TreasuryAccount::query()->create(['name' => 'Rawbank, compte USD', 'type' => TreasuryType::Bank, 'currency' => Currency::USD, 'ledger_code' => '521']);
-        $momo = TreasuryAccount::query()->create(['name' => 'Mobile money (M-Pesa)', 'type' => TreasuryType::MobileMoney, 'currency' => Currency::USD, 'ledger_code' => '5216']);
+        $bank = TreasuryAccount::query()->create(['name' => 'Rawbank', 'type' => TreasuryType::Bank, 'currency' => Currency::USD, 'ledger_code' => '521',
+            'holder_name' => 'Cabinet Mukendi & Associés', 'account_number' => '0501-0000000-01', 'payment_details' => 'SWIFT RAWBCDKI', 'show_to_clients' => true]);
+        $momo = TreasuryAccount::query()->create(['name' => 'M-Pesa', 'type' => TreasuryType::MobileMoney, 'currency' => Currency::USD, 'ledger_code' => '5216',
+            'holder_name' => 'Cabinet Mukendi & Associés', 'account_number' => '+243 81 000 0000', 'show_to_clients' => true]);
 
         $move = fn (array $data) => CashMovement::query()->create($data + [
             'status' => MovementStatus::Validated,
