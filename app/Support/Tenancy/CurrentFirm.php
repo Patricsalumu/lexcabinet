@@ -52,6 +52,26 @@ final class CurrentFirm
     }
 
     /**
+     * Exécute $callback hors de tout cabinet (actions de la plateforme), puis rétablit le contexte.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public function runWithoutFirm(callable $callback): mixed
+    {
+        [$previousId, $previousFirm] = [$this->id, $this->firm];
+        $this->forget();
+
+        try {
+            return $callback();
+        } finally {
+            [$this->id, $this->firm] = [$previousId, $previousFirm];
+        }
+    }
+
+    /**
      * Exécute $callback dans le contexte d'un cabinet, puis rétablit le contexte précédent.
      *
      * @template T

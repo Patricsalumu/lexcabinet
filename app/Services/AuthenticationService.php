@@ -45,6 +45,12 @@ class AuthenticationService
             throw ValidationException::withMessages([$field => trans('auth.inactive')]);
         }
 
+        if ($user->firm_id !== null && ! $user->firm?->is_active) {
+            activity('auth')->performedOn($user)->log('Tentative de connexion : cabinet désactivé');
+
+            throw ValidationException::withMessages([$field => trans('auth.firm_inactive')]);
+        }
+
         return $user;
     }
 

@@ -46,6 +46,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'is_super_admin' => 'boolean',
             'locked_at' => 'datetime',
             'last_login_at' => 'datetime',
             'two_factor_secret' => 'encrypted',
@@ -71,6 +72,12 @@ class User extends Authenticatable
     public function isLocked(): bool
     {
         return $this->locked_at !== null;
+    }
+
+    /** Super administrateur de la plateforme : aucun cabinet, aucune donnée métier. */
+    public function isSuperAdmin(): bool
+    {
+        return (bool) $this->is_super_admin && $this->firm_id === null;
     }
 
     public function isAdmin(): bool

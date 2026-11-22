@@ -19,10 +19,16 @@ return Application::configure(basePath: dirname(__DIR__))
             before: \Illuminate\Routing\Middleware\SubstituteBindings::class,
             prepend: \App\Http\Middleware\SetCurrentFirm::class,
         );
+        // Le super administrateur est écarté des pages des cabinets avant toute recherche de modèle.
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            prepend: \App\Http\Middleware\EnsureFirmMember::class,
+        );
 
         $middleware->alias([
             'account.usable' => \App\Http\Middleware\EnsureAccountIsUsable::class,
             'two-factor' => \App\Http\Middleware\EnsureTwoFactorIsConfigured::class,
+            'firm.member' => \App\Http\Middleware\EnsureFirmMember::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

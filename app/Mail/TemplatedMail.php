@@ -9,6 +9,7 @@ use App\Services\EmailService;
 use App\Services\IcsGenerator;
 use App\Services\InvoicePdf;
 use App\Services\SettingsService;
+use App\Support\Tenancy\CurrentFirm;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -39,9 +40,19 @@ class TemplatedMail extends Mailable implements ShouldQueue
      * Le job n'entre dans la file qu'après le commit de la transaction en cours : jamais
      * d'e-mail pour une opération annulée, ni de job traité avant que son journal soit visible.
      */
+    /** Cabinet de l'e-mail : l'envoi (construction, transport, journal) s'y déroule, quel que soit le worker. */
+    public ?int $firmId;
+
     public function __construct(public readonly int $emailLogId)
     {
+        $this->firmId = app(CurrentFirm::class)->id();
         $this->afterCommit();
+    }
+
+    /** @param  \Illuminate\Contracts\Mail\Factory|\Illuminate\Contracts\Mail\Mailer  $mailer */
+    public function send($mailer)
+    {
+        return $this->inFirm(fn () => parent::send($mailer));
     }
 
     /**
@@ -143,7 +154,12 @@ class TemplatedMail extends Mailable implements ShouldQueue
     /** Appelé après le dernier échec : l'e-mail est marqué « Échec » avec l'erreur. */
     public function failed(Throwable $e): void
     {
-        app(EmailService::class)->recordFailure($this->emailLogId, $e);
+        $this->inFirm(fn () => app(EmailService::class)->recordFailure($this->emailLogId, $e));
+    }
+
+    private function inFirm(callable $callback): mixed
+    {
+        return $this->firmId === null ? $callback() : app(CurrentFirm::class)->run($this->firmId, $callback);
     }
 
     private function log(): EmailLog

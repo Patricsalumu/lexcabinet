@@ -30,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
 
         $this->bootFirmContextForQueues();
 
+        // Espace Plateforme : réservé au super administrateur (aucun cabinet).
+        Gate::define('platform.manage', fn (User $user): bool => $user->isSuperAdmin());
+
         // Accès à un module de la navigation : au moins une des permissions du module.
         Gate::define('view-module', function (User $user, Module|string $module): bool {
             $module = $module instanceof Module ? $module : Module::tryFrom($module);

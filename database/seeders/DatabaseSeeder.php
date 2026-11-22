@@ -30,5 +30,8 @@ class DatabaseSeeder extends Seeder
 
         // Cabinet n° 2 : pour vérifier dans le navigateur que les cabinets ne se voient pas.
         $this->call(SecondFirmDemoSeeder::class);
+
+        // Super administrateur de démonstration (espace Plateforme).
+        $this->call(SuperAdminDemoSeeder::class);
     }
 }

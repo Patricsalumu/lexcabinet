@@ -18,6 +18,22 @@ class AuditActivity extends Activity
 
     protected static function booted(): void
     {
+        // Hors contexte de cabinet (connexion, mot de passe oublié…), l'entrée est rangée dans
+        // le cabinet de la donnée concernée ; à défaut, elle relève du journal de la plateforme.
+        static::creating(function (AuditActivity $activity) {
+            // Les actions de la plateforme ne relèvent d'aucun cabinet.
+            if ($activity->log_name === 'platform') {
+                $activity->firm_id = null;
+
+                return;
+            }
+
+            if ($activity->firm_id === null) {
+                $owner = $activity->subject ?? $activity->causer;
+                $activity->firm_id = $owner?->getAttribute('firm_id');
+            }
+        });
+
         static::updating(function () {
             throw new LogicException("Le journal d'audit n'est pas modifiable.");
         });

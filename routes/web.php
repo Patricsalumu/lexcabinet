@@ -36,6 +36,10 @@ use App\Http\Controllers\AccountingExportController;
 use App\Livewire\Accounting\AccountingIndex;
 use App\Livewire\Accounting\ChartOfAccounts;
 use App\Livewire\Accounting\ManualEntry;
+use App\Livewire\Platform\FirmCreate;
+use App\Livewire\Platform\FirmIndex;
+use App\Livewire\Platform\FirmShow;
+use App\Livewire\Platform\PlatformAuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -54,15 +58,25 @@ Route::get('compte/acces/{user}', AccountActivationController::class)
 // Compte connecté, actif et non verrouillé.
 Route::middleware(['auth', 'account.usable'])->group(function () {
     Route::get('securite/double-authentification', TwoFactorSetup::class)->name('two-factor.setup');
-    Route::get('parametres/logo', FirmLogoController::class)->name('firm.logo');
+    Route::get('parametres/logo', FirmLogoController::class)->middleware('firm.member')->name('firm.logo');
 
     // Double authentification obligatoire pour les administrateurs.
     Route::middleware('two-factor')->group(function () {
+        Route::view('profil', 'profile')->name('profile');
+
+        // Espace Plateforme (super administrateur) : cabinets et leurs administrateurs, jamais leurs données.
+        Route::prefix('plateforme')->name('platform.')->middleware('can:platform.manage')->group(function () {
+            Route::get('/', FirmIndex::class)->name('firms');
+            Route::get('cabinets/nouveau', FirmCreate::class)->name('firms.create');
+            Route::get('cabinets/{firm}', FirmShow::class)->whereNumber('firm')->name('firms.show');
+            Route::get('journal', PlatformAuditLog::class)->name('audit');
+        });
+
+    // Pages des cabinets : réservées aux membres d'un cabinet (le super administrateur en est exclu).
+    Route::middleware('firm.member')->group(function () {
         Route::get('tableau-de-bord', Dashboard::class)
             ->middleware('can:dashboard.view')
             ->name('dashboard');
-
-        Route::view('profil', 'profile')->name('profile');
 
         Route::prefix('parametres')->name('settings.')->group(function () {
             Route::get('/', function (Request $request) {
@@ -150,6 +164,7 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
                 ->whereIn('format', ['xlsx', 'pdf'])
                 ->name('export');
         });
+    });
     });
 });
 
