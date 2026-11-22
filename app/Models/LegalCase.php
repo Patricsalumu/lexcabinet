@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\CaseStatus;
 use App\Enums\Currency;
 use App\Enums\FeeType;
@@ -22,6 +23,8 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 class LegalCase extends Model
 {
+    use BelongsToFirm;
+
     /** @use HasFactory<LegalCaseFactory> */
     use HasFactory, LogsActivity;
 

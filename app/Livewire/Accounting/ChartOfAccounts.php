@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Accounting;
 
+use App\Support\Tenancy\FirmRule;
 use App\Enums\Permission;
 use App\Models\Account;
 use Illuminate\Contracts\View\View;
@@ -34,7 +35,7 @@ class ChartOfAccounts extends Component
     {
         $this->authorize(Permission::AccountingManage->value);
         $this->validate([
-            'code' => ['required', 'regex:/^[1-7]\d{0,7}$/', Rule::unique('accounts', 'code')],
+            'code' => ['required', 'regex:/^[1-7]\d{0,7}$/', FirmRule::unique('accounts', 'code')],
             'label' => ['required', 'string', 'max:150'],
         ], ['code.regex' => 'Le numéro de compte commence par la classe (1 à 7) et ne contient que des chiffres.'], ['code' => 'numéro', 'label' => 'intitulé']);
 

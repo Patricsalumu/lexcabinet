@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
@@ -11,6 +12,8 @@ use LogicException;
  */
 class AdvanceAllocation extends Model
 {
+    use BelongsToFirm;
+
     protected $fillable = ['cash_movement_id', 'invoice_id', 'amount', 'invoice_amount', 'exchange_rate', 'created_by'];
 
     protected function casts(): array

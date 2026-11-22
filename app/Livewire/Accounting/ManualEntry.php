@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Accounting;
 
+use App\Support\Tenancy\FirmRule;
 use App\Enums\Journal;
 use App\Enums\Permission;
 use App\Models\Account;
@@ -76,7 +77,7 @@ class ManualEntry extends Component
             'label' => ['required', 'string', 'max:200'],
             'reference' => ['nullable', 'string', 'max:50'],
             'lines' => ['array', 'min:2'],
-            'lines.*.code' => ['required', Rule::exists('accounts', 'code')->where('is_active', true)],
+            'lines.*.code' => ['required', FirmRule::exists('accounts', 'code')->where('is_active', true)],
             'lines.*.debit' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
             'lines.*.credit' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
             'lines.*.label' => ['nullable', 'string', 'max:150'],

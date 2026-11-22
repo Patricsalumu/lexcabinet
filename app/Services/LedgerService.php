@@ -9,6 +9,7 @@ use App\Models\AccountingPeriod;
 use App\Models\JournalEntry;
 use App\Models\User;
 use App\Support\Money;
+use App\Support\Tenancy\CurrentFirm;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -110,7 +111,7 @@ class LedgerService
     public function closePeriod(int $year, int $month, User $by): AccountingPeriod
     {
         return DB::transaction(function () use ($year, $month, $by) {
-            AccountingPeriod::query()->insertOrIgnore(['year' => $year, 'month' => $month, 'status' => AccountingPeriod::OPEN, 'created_at' => now(), 'updated_at' => now()]);
+            AccountingPeriod::query()->insertOrIgnore(['firm_id' => app(CurrentFirm::class)->require(), 'year' => $year, 'month' => $month, 'status' => AccountingPeriod::OPEN, 'created_at' => now(), 'updated_at' => now()]);
             $period = AccountingPeriod::query()->where('year', $year)->where('month', $month)->lockForUpdate()->firstOrFail();
 
             if ($period->isClosed()) {
@@ -139,6 +140,7 @@ class LedgerService
     {
         $row = DB::table('journal_lines')
             ->join('journal_entries', 'journal_entries.id', '=', 'journal_lines.journal_entry_id')
+            ->where('journal_entries.firm_id', app(CurrentFirm::class)->require())   // requête directe : filtre du cabinet explicite
             ->whereBetween('journal_entries.entry_date', [$from->toDateString(), $to->toDateString()])
             ->selectRaw('coalesce(sum(debit), 0) as d, coalesce(sum(credit), 0) as c')
             ->first();

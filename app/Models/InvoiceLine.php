@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\InvoiceLineType;
 use App\Enums\InvoiceStatus;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,8 @@ use LogicException;
 
 class InvoiceLine extends Model
 {
+    use BelongsToFirm;
+
     public const AUTO = 'auto';
 
     public const MANUAL = 'manual';

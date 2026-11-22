@@ -154,8 +154,9 @@ it('contre-passe l\'écriture d\'un mouvement contre-passé', function () {
 | la balance du mois est équilibrée.
 */
 it('scénario 11 : écritures équilibrées pour chaque facture et mouvement, balance du mois équilibrée', function () {
-    TreasuryAccount::query()->delete(); // recréés par les données de démonstration
     $this->seed(\Database\Seeders\DatabaseSeeder::class);
+    // Les données de démonstration appartiennent au cabinet Mukendi : le test s'y place.
+    app(\App\Support\Tenancy\CurrentFirm::class)->set(\App\Models\Firm::query()->where('name', 'Cabinet Mukendi & Associés')->sole());
 
     // Toutes les opérations (données de démonstration reprises + opérations du test) ont leur écriture.
     $cash = app(CashService::class);

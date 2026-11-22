@@ -35,7 +35,9 @@ class MailCheck extends Command
             $this->components->twoColumnDetail('Mot de passe', filled($smtp['password'] ?? null) ? 'renseigné' : '<fg=yellow>vide</>');
         }
         $this->components->twoColumnDetail('Expéditeur (MAIL_FROM_ADDRESS)', (string) config('mail.from.address'));
-        $this->components->twoColumnDetail('Adresse de réponse (e-mail du cabinet)', (string) (app(\App\Services\SettingsService::class)->get('firm.email') ?: '—'));
+        foreach (\App\Models\Firm::query()->active()->orderBy('id')->get() as $firm) {
+            $this->components->twoColumnDetail("Adresse de réponse · {$firm->name}", app(\App\Support\Tenancy\CurrentFirm::class)->run($firm, fn () => \App\Mail\TemplatedMail::replyAddress()));
+        }
         if ($mailer === 'smtp' && filled(config('mail.mailers.smtp.username')) && str_contains((string) config('mail.mailers.smtp.username'), '@')
             && strcasecmp((string) config('mail.mailers.smtp.username'), (string) config('mail.from.address')) !== 0) {
             $this->components->warn('MAIL_FROM_ADDRESS diffère du compte SMTP : de nombreux serveurs refusent alors l\'envoi (erreur 550).');
@@ -43,7 +45,7 @@ class MailCheck extends Command
 
         // Adresses de démonstration restées en base : les envois vers elles échoueront.
         $demoUsers = \App\Models\User::query()->where('is_active', true)->where('email', 'like', '%.example')->count();
-        $demoClients = \App\Models\Client::query()->where('email_consent', true)->where('email', 'like', '%.example')->count();
+        $demoClients = \App\Models\Client::query()->withoutGlobalScope(\App\Support\Tenancy\FirmScope::class)->where('email_consent', true)->where('email', 'like', '%.example')->count();
         if ($demoUsers + $demoClients > 0) {
             $this->components->warn("Adresses de démonstration (.example) : {$demoUsers} utilisateur(s) actif(s) et {$demoClients} client(s). Corrigez-les ou désactivez ces comptes.");
         }
@@ -80,11 +82,11 @@ class MailCheck extends Command
         $this->newLine();
         $this->components->twoColumnDetail('<fg=cyan>Journal d\'envoi (email_logs)</>');
         foreach (EmailStatus::cases() as $status) {
-            $this->components->twoColumnDetail($status->label(), (string) EmailLog::query()->where('status', $status->value)->count());
+            $this->components->twoColumnDetail($status->label(), (string) EmailLog::query()->withoutGlobalScope(\App\Support\Tenancy\FirmScope::class)->where('status', $status->value)->count());
         }
-        $lastSent = EmailLog::query()->where('status', EmailStatus::Sent->value)->latest('sent_at')->first();
+        $lastSent = EmailLog::query()->withoutGlobalScope(\App\Support\Tenancy\FirmScope::class)->where('status', EmailStatus::Sent->value)->latest('sent_at')->first();
         $this->components->twoColumnDetail('Dernier envoi réussi', $lastSent?->sent_at?->format('d/m/Y H:i') ?? '—');
-        $lastFailure = EmailLog::query()->where('status', EmailStatus::Failed->value)->latest('id')->first();
+        $lastFailure = EmailLog::query()->withoutGlobalScope(\App\Support\Tenancy\FirmScope::class)->where('status', EmailStatus::Failed->value)->latest('id')->first();
         if ($lastFailure) {
             $this->components->twoColumnDetail('Dernière erreur', mb_substr((string) $lastFailure->reason, 0, 120));
         }
@@ -96,10 +98,12 @@ class MailCheck extends Command
             $this->components->twoColumnDetail('Boîte lue', '<fg=yellow>non configurée (IMAP_HOST, IMAP_USERNAME)</>');
         } else {
             $this->components->twoColumnDetail('Boîte lue', (string) config('imap.accounts.default.username').' sur '.config('imap.accounts.default.host'));
-            $this->components->twoColumnDetail('Les clients répondent à', \App\Mail\TemplatedMail::replyAddress());
-            if ($mailbox->address() && strcasecmp($mailbox->address(), \App\Mail\TemplatedMail::replyAddress()) !== 0) {
-                $this->components->warn('Les réponses arrivent dans une autre boîte que celle lue : alignez l\'e-mail du cabinet (Paramètres) et IMAP_USERNAME.');
-                $problems++;
+            foreach (\App\Models\Firm::query()->active()->orderBy('id')->get() as $firm) {
+                $replyTo = app(\App\Support\Tenancy\CurrentFirm::class)->run($firm, fn () => \App\Mail\TemplatedMail::replyAddress());
+                if ($mailbox->address() && strcasecmp($mailbox->address(), $replyTo) !== 0) {
+                    $this->components->warn("{$firm->name} : ses clients répondent à {$replyTo}, une autre boîte que celle lue. Alignez l'e-mail du cabinet (Paramètres) et IMAP_USERNAME.");
+                    $problems++;
+                }
             }
             try {
                 $this->components->twoColumnDetail('Connexion', 'réussie ('.implode(', ', $mailbox->folders()).')');
@@ -108,7 +112,7 @@ class MailCheck extends Command
                 $problems++;
             }
             $this->components->twoColumnDetail('Dernière relève', (string) (\Illuminate\Support\Facades\Cache::get('lexcabinet.replies.last_fetch_at') ?? 'jamais'));
-            $this->components->twoColumnDetail('Réponses importées', (string) \App\Models\EmailReply::query()->count());
+            $this->components->twoColumnDetail('Réponses importées', (string) \App\Models\EmailReply::query()->withoutGlobalScope(\App\Support\Tenancy\FirmScope::class)->count());
         }
 
         if ($to = $this->option('send')) {

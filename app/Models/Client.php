@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\ClientType;
 use App\Enums\IdDocumentType;
 use App\Enums\Permission;
@@ -15,6 +16,8 @@ use Spatie\Activitylog\Support\LogOptions;
 
 class Client extends Model
 {
+    use BelongsToFirm;
+
     /** @use HasFactory<ClientFactory> */
     use HasFactory, LogsActivity;
 

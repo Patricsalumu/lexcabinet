@@ -14,8 +14,32 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
-    ->beforeEach(fn () => $this->seed(\Database\Seeders\ChartOfAccountsSeeder::class))
+    ->beforeEach(function () {
+        // Multi-cabinet : chaque test se déroule dans un cabinet (le « cabinet A »).
+        $this->firm = \App\Models\Firm::factory()->create(['name' => 'Cabinet de test']);
+        app(\App\Support\Tenancy\CurrentFirm::class)->set($this->firm);
+        $this->seed(\Database\Seeders\ChartOfAccountsSeeder::class);
+    })
     ->in('Feature');
+
+/**
+ * Exécute $callback dans un autre cabinet (créé au besoin), puis revient au cabinet du test.
+ *
+ * @template T
+ *
+ * @param  callable(\App\Models\Firm): T  $callback
+ * @return T
+ */
+function inOtherFirm(callable $callback, ?\App\Models\Firm $firm = null): mixed
+{
+    $firm ??= \App\Models\Firm::factory()->create();
+
+    return app(\App\Support\Tenancy\CurrentFirm::class)->run($firm, function () use ($callback, $firm) {
+        test()->seed(\Database\Seeders\ChartOfAccountsSeeder::class);
+
+        return $callback($firm);
+    });
+}
 
 /**
  * Crée un utilisateur avec les rôles donnés (en créant rôles et permissions au besoin).

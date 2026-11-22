@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Support\Tenancy\FirmRule;
 use App\Enums\Currency;
 use App\Enums\Permission;
 use App\Enums\TreasuryType;
@@ -86,7 +87,7 @@ class TreasuryAccounts extends Component
 
         $rules = [
             'name' => ['required', 'string', 'max:100',
-                Rule::unique('treasury_accounts')->ignore($editing?->id)->where(fn ($q) => $q->where('type', $type)->where('currency', $currency))],
+                FirmRule::unique('treasury_accounts')->ignore($editing?->id)->where(fn ($q) => $q->where('type', $type)->where('currency', $currency))],
             'holder_name' => ['nullable', 'string', 'max:150'],
             'account_number' => ['nullable', 'string', 'max:100'],
             'payment_details' => ['nullable', 'string', 'max:200'],

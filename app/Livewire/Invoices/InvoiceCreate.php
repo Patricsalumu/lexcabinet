@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Invoices;
 
+use App\Support\Tenancy\FirmRule;
 use App\Enums\AppointmentStatus;
 use App\Enums\AppointmentType;
 use App\Enums\FeeType;
@@ -82,10 +83,10 @@ class InvoiceCreate extends Component
         $this->authorize('create', Invoice::class);
 
         if ($this->mode === 'consultation') {
-            $this->validate(['appointment_id' => ['required', 'integer', 'exists:appointments,id']], [], ['appointment_id' => 'consultation']);
+            $this->validate(['appointment_id' => ['required', 'integer', FirmRule::exists('appointments', 'id')]], [], ['appointment_id' => 'consultation']);
             $invoice = $builder->forConsultation(Appointment::query()->findOrFail((int) $this->appointment_id), auth()->user());
         } else {
-            $this->validate(['case_id' => ['required', 'integer', 'exists:cases,id']], [], ['case_id' => 'dossier']);
+            $this->validate(['case_id' => ['required', 'integer', FirmRule::exists('cases', 'id')]], [], ['case_id' => 'dossier']);
             $invoice = $builder->forCase(LegalCase::query()->findOrFail((int) $this->case_id), auth()->user());
         }
 

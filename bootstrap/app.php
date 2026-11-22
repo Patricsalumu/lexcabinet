@@ -12,6 +12,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Multi-cabinet : chaque requête web est placée dans le cabinet de l'utilisateur connecté.
+        $middleware->web(append: [\App\Http\Middleware\SetCurrentFirm::class]);
+        // … avant la liaison des modèles de route : {case}, {invoice}… sont cherchés dans ce cabinet.
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            prepend: \App\Http\Middleware\SetCurrentFirm::class,
+        );
+
         $middleware->alias([
             'account.usable' => \App\Http\Middleware\EnsureAccountIsUsable::class,
             'two-factor' => \App\Http\Middleware\EnsureTwoFactorIsConfigured::class,

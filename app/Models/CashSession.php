@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CashSession extends Model
 {
+    use BelongsToFirm;
+
     public const OPEN = 'open';
 
     public const CLOSED = 'closed';

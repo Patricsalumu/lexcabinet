@@ -26,7 +26,7 @@ class DocumentService
     public function store(LegalCase $case, UploadedFile $file, DocumentCategory $category, User $by): Document
     {
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
-        $path = $file->storeAs("cases/{$case->id}", Str::uuid().'.'.$extension, self::DISK);
+        $path = $file->storeAs("firms/{$case->firm_id}/cases/{$case->id}", Str::uuid().'.'.$extension, self::DISK);
 
         try {
             return DB::transaction(fn () => $case->documents()->create([

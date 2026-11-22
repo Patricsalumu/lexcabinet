@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\Journal;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,8 @@ use LogicException;
  */
 class JournalEntry extends Model
 {
+    use BelongsToFirm;
+
     protected $fillable = [
         'number', 'journal', 'entry_date', 'label', 'reference', 'source_type', 'source_id',
         'source_event', 'reverses_id', 'is_manual', 'created_by',

@@ -69,7 +69,7 @@ it('stocke une pièce jointe sur le disque privé, hors du dossier public', func
     $doc = Document::query()->firstOrFail();
     expect($doc->original_name)->toBe('Contrat de bail.pdf')
         ->and($doc->category->value)->toBe('evidence')
-        ->and($doc->path)->toStartWith("cases/{$case->id}/")
+        ->and($doc->path)->toStartWith("firms/{$case->firm_id}/cases/{$case->id}/")   // dossier propre au cabinet
         ->and($doc->uploaded_by)->toBe($secretary->id);
 
     Storage::disk('local')->assertExists($doc->path);

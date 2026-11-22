@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Invoices;
 
+use App\Support\Tenancy\FirmRule;
 use App\Enums\EmailStatus;
 use App\Enums\InvoiceLineType;
 use App\Models\EmailLog;
@@ -164,7 +165,7 @@ class InvoiceShow extends Component
     {
         $this->authorize(\App\Enums\Permission::CashOperate->value);
         $this->validate([
-            'advanceId' => ['required', 'integer', 'exists:cash_movements,id'],
+            'advanceId' => ['required', 'integer', FirmRule::exists('cash_movements', 'id')],
             'advanceAmount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
         ], [], ['advanceId' => 'provision', 'advanceAmount' => 'montant']);
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\AppointmentStatus;
 use App\Enums\AppointmentType;
 use App\Enums\LocationType;
@@ -15,6 +16,8 @@ use Spatie\Activitylog\Support\LogOptions;
 
 class Appointment extends Model
 {
+    use BelongsToFirm;
+
     /** @use HasFactory<AppointmentFactory> */
     use HasFactory, LogsActivity;
 

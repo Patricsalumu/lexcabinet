@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Setting extends Model
 {
+    use BelongsToFirm;
+
     protected $fillable = ['key', 'value', 'type', 'updated_by'];
 
     public function updatedBy(): BelongsTo

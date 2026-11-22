@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 class EmailTemplate extends Model
 {
+    use BelongsToFirm;
+
     use LogsActivity;
 
     public const CONFIRMATION = 'confirmation';

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Cash;
 
+use App\Support\Tenancy\FirmRule;
 use App\Enums\Currency;
 use App\Enums\DisbursementCategory;
 use App\Enums\MovementStatus;
@@ -70,7 +71,7 @@ class DisbursementForm extends Component
             'amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2', 'max:9999999999999.99'],
             'mode' => ['required', Rule::enum(PaymentMode::class)],
             'treasury_account_id' => ['nullable', 'integer'],
-            'client_id' => [$this->category === 'client_disbursement' ? 'required' : 'nullable', 'integer', Rule::exists('clients', 'id')],
+            'client_id' => [$this->category === 'client_disbursement' ? 'required' : 'nullable', 'integer', FirmRule::exists('clients', 'id')],
         ], [], [
             'category' => 'catégorie', 'beneficiary' => 'bénéficiaire', 'label' => 'motif', 'voucher' => 'pièce justificative',
             'amount' => 'montant', 'client_id' => 'client',

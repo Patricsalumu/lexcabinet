@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\EmailStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class EmailLog extends Model
 {
+    use BelongsToFirm;
+
     protected $fillable = [
         'template_key', 'message_id', 'thread_id', 'in_reply_to', 'references', 'recipient_name', 'recipient_email', 'subject', 'body', 'attachments',
         'status', 'reason', 'attempts', 'recipient_type', 'recipient_id', 'related_type', 'related_id',

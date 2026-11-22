@@ -15,6 +15,8 @@ use App\Models\User;
 use App\Services\Mailbox\ImapMailbox;
 use App\Services\Mailbox\InboundEmail;
 use App\Support\QuotedText;
+use App\Support\Tenancy\CurrentFirm;
+use App\Support\Tenancy\FirmScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -73,7 +75,9 @@ class ConversationService
     /** Message à télécharger : nouveau, et réponse à un e-mail de l'application. */
     public function isWanted(string $messageId, array $cited): bool
     {
-        if (EmailReply::query()->where('message_id', $messageId)->exists() || EmailLog::query()->where('message_id', $messageId)->exists()) {
+        // La boîte est relevée hors de tout cabinet : recherche sur l'ensemble des cabinets.
+        if (EmailReply::query()->withoutGlobalScope(FirmScope::class)->where('message_id', $messageId)->exists()
+            || EmailLog::query()->withoutGlobalScope(FirmScope::class)->where('message_id', $messageId)->exists()) {
             return false;
         }
 
@@ -89,7 +93,8 @@ class ConversationService
 
         $log = $this->answeredLog($mail->citedIds());
 
-        return DB::transaction(function () use ($mail, $log) {
+        // La réponse est enregistrée dans le cabinet de l'e-mail auquel elle répond.
+        return app(CurrentFirm::class)->run($log->firm_id, fn () => DB::transaction(function () use ($mail, $log) {
             $sender = Client::query()->where('email', $mail->fromEmail)->first()
                 ?? User::query()->where('email', $mail->fromEmail)->first();
 
@@ -116,20 +121,21 @@ class ConversationService
                 ->log('Réponse reçue par e-mail');
 
             return $reply;
-        });
+        }));
     }
 
     /** E-mail de l'application cité par la réponse (le plus proche d'abord). */
     private function answeredLog(array $cited): ?EmailLog
     {
         foreach ($cited as $id) {
-            $log = EmailLog::query()->where('message_id', $id)->first();
+            $log = EmailLog::query()->withoutGlobalScope(FirmScope::class)->where('message_id', $id)->first();
             if ($log) {
                 return $log;
             }
 
             // Réponse à une réponse déjà importée : même conversation.
-            $reply = EmailReply::query()->where('message_id', $id)->with('emailLog')->first();
+            $reply = EmailReply::query()->withoutGlobalScope(FirmScope::class)->where('message_id', $id)
+                ->with(['emailLog' => fn ($q) => $q->withoutGlobalScope(FirmScope::class)])->first();
             if ($reply) {
                 return $reply->emailLog;
             }
@@ -155,7 +161,7 @@ class ConversationService
             }
 
             $extension = Str::lower(pathinfo($name, PATHINFO_EXTENSION));
-            $path = "email-replies/{$reply->id}/".($i + 1).'-'.Str::uuid().($extension !== '' ? '.'.preg_replace('/[^a-z0-9]/', '', $extension) : '');
+            $path = "firms/{$reply->firm_id}/email-replies/{$reply->id}/".($i + 1).'-'.Str::uuid().($extension !== '' ? '.'.preg_replace('/[^a-z0-9]/', '', $extension) : '');
             Storage::disk(self::DISK)->put($path, $attachment['content']);
             $stored[] = ['name' => $name, 'path' => $path, 'size' => $size, 'mime' => $attachment['mime']];
         }

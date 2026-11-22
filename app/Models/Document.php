@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\DocumentCategory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +14,8 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 class Document extends Model
 {
+    use BelongsToFirm;
+
     use LogsActivity;
 
     protected $fillable = ['case_id', 'category', 'original_name', 'path', 'mime_type', 'size', 'uploaded_by'];

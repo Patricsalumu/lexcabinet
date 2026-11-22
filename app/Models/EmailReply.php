@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Support\QuotedText;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class EmailReply extends Model
 {
+    use BelongsToFirm;
+
     protected $fillable = [
         'email_log_id', 'thread_id', 'message_id', 'in_reply_to', 'references', 'from_email', 'from_name',
         'sender_type', 'sender_id', 'subject', 'body', 'attachments', 'folder', 'received_at', 'read_at', 'read_by',

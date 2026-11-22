@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\Currency;
 use App\Enums\TreasuryType;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,6 +16,8 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 class TreasuryAccount extends Model
 {
+    use BelongsToFirm;
+
     use LogsActivity;
 
     protected $fillable = [

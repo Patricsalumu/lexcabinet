@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\Currency;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use LogicException;
 
 class JournalLine extends Model
 {
+    use BelongsToFirm;
+
     protected $fillable = ['journal_entry_id', 'account_id', 'label', 'debit', 'credit', 'original_currency', 'original_amount', 'exchange_rate'];
 
     protected function casts(): array

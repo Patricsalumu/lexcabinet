@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\CaseEventType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,8 @@ use Spatie\Activitylog\Support\LogOptions;
 
 class CaseEvent extends Model
 {
+    use BelongsToFirm;
+
     use HasFactory, LogsActivity;
 
     protected $fillable = ['case_id', 'type', 'occurred_at', 'description', 'chamber', 'created_by'];

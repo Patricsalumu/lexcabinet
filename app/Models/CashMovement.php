@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\CashMovementType;
 use App\Enums\Currency;
 use App\Enums\DisbursementCategory;
@@ -19,6 +20,8 @@ use LogicException;
  */
 class CashMovement extends Model
 {
+    use BelongsToFirm;
+
     public const IN = 'in';
 
     public const OUT = 'out';

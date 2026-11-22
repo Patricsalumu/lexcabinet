@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
@@ -13,6 +14,8 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 class Account extends Model
 {
+    use BelongsToFirm;
+
     use LogsActivity;
 
     protected $fillable = ['code', 'label', 'class', 'is_active'];

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\Currency;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,8 @@ use LogicException;
  */
 class CreditNote extends Model
 {
+    use BelongsToFirm;
+
     protected $fillable = [
         'number', 'invoice_id', 'client_id', 'currency', 'exchange_rate', 'issue_date',
         'fees_amount', 'other_amount', 'vat_amount', 'total', 'reason', 'issued_by',

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Cases;
 
+use App\Support\Tenancy\FirmRule;
 use App\Enums\Currency;
 use App\Enums\FeeType;
 use App\Enums\Matter;
@@ -101,15 +102,15 @@ class CaseForm extends Component
         $editing ? $this->authorize('update', $this->case) : $this->authorize('create', LegalCase::class);
 
         $data = $this->validate([
-            'client_id' => ['required', 'integer', Rule::exists('clients', 'id')],
+            'client_id' => ['required', 'integer', FirmRule::exists('clients', 'id')],
             'title' => ['required', 'string', 'max:200'],
             'adverse_party' => ['nullable', 'string', 'max:200'],
             'matter' => ['required', Rule::enum(Matter::class)],
             'jurisdiction' => ['nullable', 'string', 'max:200'],
             'docket_number' => ['nullable', 'string', 'max:60'],
-            'lead_lawyer_id' => ['required', 'integer', Rule::exists('users', 'id')],
+            'lead_lawyer_id' => ['required', 'integer', FirmRule::exists('users', 'id')],
             'collaborators' => ['array'],
-            'collaborators.*' => ['integer', Rule::exists('users', 'id')],
+            'collaborators.*' => ['integer', FirmRule::exists('users', 'id')],
             'fee_type' => ['required', Rule::enum(FeeType::class)],
             'fee_amount' => ['required', 'numeric', 'min:0', 'max:9999999999999.99', 'decimal:0,2'],
             'currency' => ['required', Rule::enum(Currency::class)],

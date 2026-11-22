@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Agenda;
 
+use App\Support\Tenancy\FirmRule;
 use App\Enums\AppointmentType;
 use App\Enums\ClientType;
 use App\Enums\LocationType;
@@ -120,18 +121,18 @@ class AppointmentForm extends Component
         $prospect = ! $editing && $this->newProspect;
 
         $data = $this->validate([
-            'client_id' => $prospect ? ['nullable'] : ['required', 'integer', Rule::exists('clients', 'id')],
+            'client_id' => $prospect ? ['nullable'] : ['required', 'integer', FirmRule::exists('clients', 'id')],
             'prospect_name' => $prospect ? ['required', 'string', 'max:200'] : ['nullable'],
             'prospect_email' => ['nullable', 'email', 'max:150'],
             'prospect_phone' => ['nullable', 'string', 'max:30'],
-            'lawyer_id' => ['required', 'integer', Rule::exists('users', 'id')],
+            'lawyer_id' => ['required', 'integer', FirmRule::exists('users', 'id')],
             'type' => ['required', Rule::enum(AppointmentType::class)],
             'date' => ['required', 'date_format:Y-m-d'],
             'time' => ['required', 'date_format:H:i'],
             'duration' => ['required', 'integer', 'min:15', 'max:600'],
             'location_type' => ['required', Rule::enum(LocationType::class)],
             'location_detail' => ['nullable', 'string', 'max:200'],
-            'case_id' => ['nullable', 'integer', Rule::exists('cases', 'id')],
+            'case_id' => ['nullable', 'integer', FirmRule::exists('cases', 'id')],
             'subject' => ['required', 'string', 'max:200'],
             'internal_notes' => ['nullable', 'string', 'max:2000'],
         ], [], [

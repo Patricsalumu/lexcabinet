@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use LogicException;
 use Spatie\Activitylog\Models\Activity;
 
@@ -10,6 +11,11 @@ use Spatie\Activitylog\Models\Activity;
  */
 class AuditActivity extends Activity
 {
+    use BelongsToFirm;
+
+    /** Peut exister hors cabinet (super administrateur, actions de la plateforme). */
+    protected static bool $firmOptional = true;
+
     protected static function booted(): void
     {
         static::updating(function () {

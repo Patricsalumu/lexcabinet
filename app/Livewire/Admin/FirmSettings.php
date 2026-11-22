@@ -138,7 +138,7 @@ class FirmSettings extends Component
         ];
 
         if ($this->logo) {
-            $values['firm.logo_path'] = $this->logo->storeAs('firm', 'logo.'.$this->logo->extension(), 'local');
+            $values['firm.logo_path'] = $this->logo->storeAs('firms/'.app(\App\Support\Tenancy\CurrentFirm::class)->require(), 'logo.'.$this->logo->extension(), 'local');
             $this->logoPath = $values['firm.logo_path'];
             $this->logo = null;
         }

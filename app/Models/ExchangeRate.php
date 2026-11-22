@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\RateSource;
 use Database\Factories\ExchangeRateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,6 +16,8 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 class ExchangeRate extends Model
 {
+    use BelongsToFirm;
+
     /** @use HasFactory<ExchangeRateFactory> */
     use HasFactory, LogsActivity;
 

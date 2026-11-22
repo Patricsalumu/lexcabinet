@@ -6,6 +6,7 @@ use App\Enums\Journal;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Support\Money;
+use App\Support\Tenancy\CurrentFirm;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,7 @@ class AccountingReports
         $opening = $this->sums(null, $from->copy()->subDay())->keyBy('account_id');
         $lines = DB::table('journal_lines')
             ->join('journal_entries', 'journal_entries.id', '=', 'journal_lines.journal_entry_id')
+            ->where('journal_entries.firm_id', app(CurrentFirm::class)->require())   // requête directe : filtre du cabinet explicite
             ->whereBetween('journal_entries.entry_date', [$from->toDateString(), $to->toDateString()])
             ->when($accountId, fn ($q) => $q->where('journal_lines.account_id', $accountId))
             ->orderBy('journal_entries.entry_date')->orderBy('journal_entries.id')->orderBy('journal_lines.id')
@@ -152,6 +154,7 @@ class AccountingReports
     {
         return DB::table('journal_lines')
             ->join('journal_entries', 'journal_entries.id', '=', 'journal_lines.journal_entry_id')
+            ->where('journal_entries.firm_id', app(CurrentFirm::class)->require())   // requête directe : filtre du cabinet explicite
             ->when($from, fn ($q) => $q->where('journal_entries.entry_date', '>=', $from->toDateString()))
             ->where('journal_entries.entry_date', '<=', $to->toDateString())
             ->groupBy('journal_lines.account_id')

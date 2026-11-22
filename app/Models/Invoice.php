@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToFirm;
 use App\Enums\Currency;
 use App\Enums\FeeType;
 use App\Enums\InvoiceStatus;
@@ -21,6 +22,8 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 class Invoice extends Model
 {
+    use BelongsToFirm;
+
     use LogsActivity;
 
     /** Champs qui peuvent encore changer après l'émission. */

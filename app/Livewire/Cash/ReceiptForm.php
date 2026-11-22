@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Cash;
 
+use App\Support\Tenancy\FirmRule;
 use App\Enums\Currency;
 use App\Enums\EmailStatus;
 use App\Enums\PaymentMode;
@@ -118,8 +119,8 @@ class ReceiptForm extends Component
         $this->authorize(Permission::CashOperate->value);
 
         $data = $this->validate([
-            'client_id' => ['required', 'integer', Rule::exists('clients', 'id')],
-            'invoice_id' => ['nullable', 'integer', Rule::exists('invoices', 'id')],
+            'client_id' => ['required', 'integer', FirmRule::exists('clients', 'id')],
+            'invoice_id' => ['nullable', 'integer', FirmRule::exists('invoices', 'id')],
             'currency' => ['required', Rule::enum(Currency::class)],
             'amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2', 'max:9999999999999.99'],
             'mode' => ['required', Rule::enum(PaymentMode::class)],

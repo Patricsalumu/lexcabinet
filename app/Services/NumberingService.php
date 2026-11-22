@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Counter;
+use App\Support\Tenancy\CurrentFirm;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 
@@ -19,7 +20,7 @@ class NumberingService
             throw new LogicException('La numérotation doit se faire dans une transaction.');
         }
 
-        Counter::query()->insertOrIgnore(['key' => $key, 'value' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        Counter::query()->insertOrIgnore(['firm_id' => app(CurrentFirm::class)->require(), 'key' => $key, 'value' => 0, 'created_at' => now(), 'updated_at' => now()]);
 
         $counter = Counter::query()->where('key', $key)->lockForUpdate()->firstOrFail();
         $counter->value++;

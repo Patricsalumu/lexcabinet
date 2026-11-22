@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\Money;
+use App\Support\Tenancy\CurrentFirm;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -69,7 +70,7 @@ class SettingsService
     /** @return array<string, mixed> Tous les paramètres, valeurs par défaut comprises. */
     public function all(): array
     {
-        $stored = Cache::remember(self::CACHE_KEY, config('lexcabinet.settings_cache_ttl'), function () {
+        $stored = Cache::remember($this->cacheKey(), config('lexcabinet.settings_cache_ttl'), function () {
             return Setting::query()->get(['key', 'value', 'type'])
                 ->mapWithKeys(fn (Setting $s) => [$s->key => $this->cast($s->value, $s->type)])
                 ->all();
@@ -128,7 +129,13 @@ class SettingsService
 
     public function flush(): void
     {
-        Cache::forget(self::CACHE_KEY);
+        Cache::forget($this->cacheKey());
+    }
+
+    /** Un cache par cabinet. */
+    private function cacheKey(): string
+    {
+        return self::CACHE_KEY.'.'.(app(CurrentFirm::class)->id() ?? 'none');
     }
 
     private function assertKnown(string $key): void
