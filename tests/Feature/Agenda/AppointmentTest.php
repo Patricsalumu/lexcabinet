@@ -138,8 +138,77 @@ it('envoie un e-mail de modification (.ics version 1) quand le rendez-vous est m
     Livewire::actingAs($secretary)->test(AppointmentForm::class, ['appointment' => $appointment->fresh()])
         ->set('internal_notes', 'Apporter le dossier papier')
         ->call('save');
-    expect(EmailLog::query()->count())->toBe(3);   // confirmation, avocat, modification
+    expect(EmailLog::query()->count())->toBe(4);   // confirmation, avocat, modification client, modification avocat
 });
+
+it('prévient l\'avocat de la modification du rendez-vous, avec le .ics à jour', function () {
+    $secretary = userWithRoles(Role::Secretary);
+    $lawyer = userWithRoles(Role::Lawyer);
+    $client = Client::factory()->create(['name' => 'Esther Kalala']);
+    bookAs($secretary, $client, $lawyer, '2026-11-10', '10:00');
+    $appointment = Appointment::query()->firstOrFail();
+
+    Livewire::actingAs($secretary)->test(AppointmentForm::class, ['appointment' => $appointment])
+        ->set('time', '15:00')->call('save')->assertHasNoErrors();
+
+    $log = EmailLog::query()->where('template_key', 'appointment_lawyer_updated')->sole();
+    expect($log->recipient_email)->toBe($lawyer->email)
+        ->and($log->status)->toBe(EmailStatus::Sent)
+        ->and($log->subject)->toBe('Rendez-vous modifié : Esther Kalala, le mardi 10 novembre 2026 à 15h00')
+        ->and($log->body)->toContain('Heure : 15h00')->toContain($secretary->name)
+        ->and($log->body)->not->toContain('Moyens de paiement');
+
+    $message = sentMessages()->map->getOriginalMessage()->last(fn ($m) => $m->getTo()[0]->getAddress() === $lawyer->email);
+    expect(collect($message->getAttachments())->first()->getBody())->toContain('METHOD:REQUEST')->toContain('SEQUENCE:1');
+});
+
+it('prévient l\'ancien et le nouvel avocat quand le rendez-vous change de mains', function () {
+    $secretary = userWithRoles(Role::Secretary);
+    $lawyer = userWithRoles(Role::Lawyer);
+    $other = userWithRoles(Role::Lawyer);
+    $client = Client::factory()->create(['name' => 'Esther Kalala']);
+    bookAs($secretary, $client, $lawyer, '2026-11-10', '10:00');
+    $appointment = Appointment::query()->firstOrFail();
+
+    Livewire::actingAs($secretary)->test(AppointmentForm::class, ['appointment' => $appointment])
+        ->set('lawyer_id', (string) $other->id)->call('save')->assertHasNoErrors();
+
+    $removed = EmailLog::query()->where('template_key', 'appointment_lawyer_cancelled')->sole();
+    expect($removed->recipient_email)->toBe($lawyer->email)
+        ->and($removed->subject)->toBe('Rendez-vous confié à '.$other->name.' : Esther Kalala, le mardi 10 novembre 2026 à 10h00')
+        ->and(EmailLog::query()->where('template_key', 'appointment_lawyer')->where('recipient_email', $other->email)->exists())->toBeTrue()
+        ->and(EmailLog::query()->where('template_key', 'appointment_lawyer_updated')->exists())->toBeFalse();
+
+    $toOld = sentMessages()->map->getOriginalMessage()->last(fn ($m) => $m->getTo()[0]->getAddress() === $lawyer->email);
+    $toNew = sentMessages()->map->getOriginalMessage()->last(fn ($m) => $m->getTo()[0]->getAddress() === $other->email);
+    expect(collect($toOld->getAttachments())->first()->getBody())->toContain('METHOD:CANCEL')
+        ->and(collect($toNew->getAttachments())->first()->getBody())->toContain('METHOD:REQUEST');
+
+    // L'ancien avocat ne peut plus recevoir de relance des e-mails réservés à l'avocat chargé.
+    $first = EmailLog::query()->where('template_key', 'appointment_lawyer')->where('recipient_email', $lawyer->email)->sole();
+    $first->forceFill(['status' => EmailStatus::Failed])->save();
+    expect(app(\App\Services\EmailService::class)->resend($first, userWithRoles(Role::Admin))->status)->toBe(EmailStatus::NotSent);
+});
+
+it('prévient l\'avocat d\'une annulation ou d\'un report, avec un .ics d\'annulation', function (string $status, string $event) {
+    $secretary = userWithRoles(Role::Secretary);
+    $lawyer = userWithRoles(Role::Lawyer);
+    $appointment = Appointment::factory()->at(Carbon::parse('2026-11-10 10:00'))->create(['lawyer_id' => $lawyer->id]);
+
+    Livewire::actingAs($secretary)->test(AgendaIndex::class)->call('setStatus', $appointment->id, $status);
+
+    $log = EmailLog::query()->where('template_key', 'appointment_lawyer_cancelled')->sole();
+    expect($log->recipient_email)->toBe($lawyer->email)
+        ->and($log->status)->toBe(EmailStatus::Sent)
+        ->and($log->subject)->toStartWith('Rendez-vous '.$event.' : ')
+        ->and($log->body)->toContain('a été '.$event.' par '.$secretary->name);
+
+    $message = sentMessages()->map->getOriginalMessage()->last(fn ($m) => $m->getTo()[0]->getAddress() === $lawyer->email);
+    expect(collect($message->getAttachments())->first()->getBody())->toContain('METHOD:CANCEL');
+})->with([
+    'annulation' => ['cancelled', 'annulé'],
+    'report' => ['postponed', 'reporté'],
+]);
 
 it('prévient le client d\'une annulation ou d\'un report, avec un .ics d\'annulation', function (string $status, string $template) {
     $secretary = userWithRoles(Role::Secretary);

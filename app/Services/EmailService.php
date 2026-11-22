@@ -227,7 +227,7 @@ class EmailService
      */
     private function confidentialityReason(EmailLog $log, Client|User $recipient): ?string
     {
-        if ($recipient instanceof User && $log->template_key === EmailTemplate::APPOINTMENT_LAWYER) {
+        if ($recipient instanceof User && in_array($log->template_key, EmailTemplate::APPOINTMENT_LAWYER_TEMPLATES, true)) {
             $appointment = Appointment::query()->find($log->related_id);
 
             return $appointment && $appointment->lawyer_id === $recipient->id ? null : 'Ce rendez-vous n\'est plus attribué à ce destinataire.';

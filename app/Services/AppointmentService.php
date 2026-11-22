@@ -44,13 +44,16 @@ class AppointmentService
         });
     }
 
-    /** Informe l'avocat du rendez-vous inscrit à son agenda, avec le fichier .ics. */
-    public function notifyLawyer(Appointment $appointment, ?User $by = null): void
+    /**
+     * Informe l'avocat chargé du rendez-vous : nouveau rendez-vous (APPOINTMENT_LAWYER) ou
+     * rendez-vous modifié (APPOINTMENT_LAWYER_UPDATED), avec le fichier .ics à jour.
+     */
+    public function notifyLawyer(Appointment $appointment, ?User $by = null, string $template = EmailTemplate::APPOINTMENT_LAWYER): void
     {
         $appointment->loadMissing(['client', 'lawyer', 'legalCase']);
         $client = $appointment->client;
 
-        $this->emails->send(EmailTemplate::APPOINTMENT_LAWYER, $appointment->lawyer, $this->emails->appointmentVars($appointment) + [
+        $this->emails->send($template, $appointment->lawyer, $this->emails->appointmentVars($appointment) + [
             'destinataire' => $appointment->lawyer->name,
             'type' => $appointment->type->label(),
             'contact_client' => implode(' · ', array_filter([$client->phone, $client->email])) ?: '—',
@@ -61,6 +64,26 @@ class AppointmentService
         ], $appointment, [['type' => 'ics', 'method' => IcsGenerator::REQUEST, 'name' => 'rendez-vous.ics']], $by);
     }
 
+    /**
+     * Prévient un avocat qu'un rendez-vous quitte son agenda (annulé, reporté ou confié à un
+     * confrère), avec un .ics d'annulation. Message volontairement réduit (client, date, objet).
+     */
+    public function notifyLawyerRemoval(Appointment $appointment, User $lawyer, string $event, ?User $by = null): void
+    {
+        $appointment->loadMissing('client');
+
+        $this->emails->send(EmailTemplate::APPOINTMENT_LAWYER_CANCELLED, $lawyer, [
+            'avocat' => $lawyer->name,
+            'destinataire' => $lawyer->name,
+            'client' => $appointment->client->name,
+            'date' => $appointment->starts_at->translatedFormat('l j F Y'),
+            'heure' => $appointment->starts_at->format('H\hi'),
+            'objet' => $appointment->subject,
+            'evenement' => $event,
+            'createur' => $by?->name ?? 'LexCabinet',
+        ], $appointment, [['type' => 'ics', 'method' => IcsGenerator::CANCEL, 'name' => 'rendez-vous.ics']], $by);
+    }
+
     /** @param  array<string, mixed>  $data */
     public function update(Appointment $appointment, array $data, User $by): Appointment
     {
@@ -68,6 +91,8 @@ class AppointmentService
 
         DB::transaction(function () use ($appointment, $attributes, $by) {
             $this->assertSlotIsFree($attributes['lawyer_id'], $attributes['starts_at'], $attributes['ends_at'], $appointment->id);
+            $previousLawyer = $appointment->lawyer;
+            $wasActive = $appointment->status->expectsReminder();
             $appointment->fill($attributes);
 
             if ($appointment->isDirty(self::NOTIFIED_FIELDS)) {
@@ -91,6 +116,18 @@ class AppointmentService
             if ($appointment->wasChanged(self::NOTIFIED_FIELDS) && $appointment->status->expectsReminder()) {
                 $this->emails->send(EmailTemplate::APPOINTMENT_UPDATED, $appointment->client, $this->emails->appointmentVars($appointment), $appointment,
                     [['type' => 'ics', 'method' => IcsGenerator::REQUEST, 'name' => 'rendez-vous.ics']], $by);
+
+                // Avocats : le rendez-vous change de mains, ou l'avocat chargé est informé de la modification.
+                // Un rendez-vous reporté qui reçoit une nouvelle date réapparaît dans l'agenda de l'avocat.
+                $appointment->unsetRelation('lawyer');
+                if ($appointment->wasChanged('lawyer_id')) {
+                    if ($wasActive) {
+                        $this->notifyLawyerRemoval($appointment, $previousLawyer, 'confié à '.$appointment->lawyer->name, $by);
+                    }
+                    $this->notifyLawyer($appointment, $by, EmailTemplate::APPOINTMENT_LAWYER);
+                } else {
+                    $this->notifyLawyer($appointment, $by, $wasActive ? EmailTemplate::APPOINTMENT_LAWYER_UPDATED : EmailTemplate::APPOINTMENT_LAWYER);
+                }
             }
         });
 
@@ -124,6 +161,7 @@ class AppointmentService
             if ($template) {
                 $this->emails->send($template, $appointment->client, $this->emails->appointmentVars($appointment), $appointment,
                     [['type' => 'ics', 'method' => IcsGenerator::CANCEL, 'name' => 'rendez-vous.ics']], $by);
+                $this->notifyLawyerRemoval($appointment, $appointment->lawyer, $status === AppointmentStatus::Cancelled ? 'annulé' : 'reporté', $by);
             }
         });
     }

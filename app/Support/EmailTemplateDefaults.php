@@ -33,6 +33,16 @@ final class EmailTemplateDefaults
                 'subject' => 'Nouveau rendez-vous : {client}, le {date} à {heure}',
                 'body' => "Bonjour {avocat},\n\nUn rendez-vous vient d'être inscrit à votre agenda par {createur}.\n\nClient : {client}\nContact : {contact_client}\nDate : {date}\nHeure : {heure}\nType : {type}\nLieu : {lieu}\nObjet : {objet}\nDossier : {dossier}\nNotes internes : {notes}\n\nLe fichier joint ajoute ce rendez-vous à votre agenda.\nConsulter l'agenda : {lien}\n\n{cabinet}",
             ],
+            EmailTemplate::APPOINTMENT_LAWYER_UPDATED => [
+                'name' => 'Rendez-vous modifié (avocat concerné)',
+                'subject' => 'Rendez-vous modifié : {client}, le {date} à {heure}',
+                'body' => "Bonjour {avocat},\n\nUn rendez-vous de votre agenda a été modifié par {createur}. Voici les nouvelles informations :\n\nClient : {client}\nContact : {contact_client}\nDate : {date}\nHeure : {heure}\nType : {type}\nLieu : {lieu}\nObjet : {objet}\nDossier : {dossier}\nNotes internes : {notes}\n\nLe fichier joint met à jour ce rendez-vous dans votre agenda.\nConsulter l'agenda : {lien}\n\n{cabinet}",
+            ],
+            EmailTemplate::APPOINTMENT_LAWYER_CANCELLED => [
+                'name' => 'Rendez-vous annulé, reporté ou réattribué (avocat)',
+                'subject' => 'Rendez-vous {evenement} : {client}, le {date} à {heure}',
+                'body' => "Bonjour {avocat},\n\nLe rendez-vous suivant a été {evenement} par {createur} :\n\nClient : {client}\nDate : {date}\nHeure : {heure}\nObjet : {objet}\n\nIl est retiré de votre agenda ; le fichier joint le supprime de votre calendrier.\n\n{cabinet}",
+            ],
             EmailTemplate::REMINDER => [
                 'name' => 'Rappel de rendez-vous (J-1)',
                 'subject' => 'Rappel : votre rendez-vous de demain à {heure}',
