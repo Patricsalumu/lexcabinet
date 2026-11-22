@@ -5,7 +5,7 @@ namespace App\Listeners;
 use App\Mail\TemplatedMail;
 use App\Models\EmailLog;
 use App\Models\EmailTemplate;
-use App\Services\Mailbox\ImapMailbox;
+use App\Services\Mailbox\FirmMailConfig;
 use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -17,12 +17,18 @@ use Throwable;
  */
 class CopyReplyToSentFolder
 {
-    public function __construct(private readonly ImapMailbox $mailbox) {}
+    public function __construct(private readonly FirmMailConfig $mail) {}
 
     public function handle(MessageSent $event): void
     {
         $header = $event->message->getHeaders()->get(TemplatedMail::LOG_HEADER);
-        if ($header === null || ! $this->mailbox->isConfigured()) {
+        if ($header === null) {
+            return;
+        }
+
+        // Boîte du cabinet (l'envoi se déroule dans son contexte), sinon celle de la plateforme.
+        $mailbox = $this->mail->replyMailbox();
+        if (! $mailbox->isConfigured()) {
             return;
         }
 
@@ -37,7 +43,7 @@ class CopyReplyToSentFolder
         }
 
         try {
-            $this->mailbox->appendToSent($event->sent->toString());
+            $mailbox->appendToSent($event->sent->toString());
         } catch (Throwable $e) {
             Log::warning('Copie de la réponse dans « Envoyés » impossible : '.$e->getMessage());
         }

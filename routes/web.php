@@ -98,6 +98,7 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
             Route::get('taux-de-change', ExchangeRates::class)->middleware('can:rates.manage')->name('rates');
             Route::get('journal-audit', AuditLog::class)->middleware('can:audit.view')->name('audit');
             Route::get('tresorerie', TreasuryAccounts::class)->middleware('can:settings.manage')->name('treasury');
+            Route::get('messagerie', \App\Livewire\Admin\MailSettings::class)->middleware('can:settings.manage')->name('mail');
         });
 
         // Clients (CLI-01 à CLI-04)

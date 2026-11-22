@@ -9,6 +9,7 @@ use App\Services\EmailService;
 use App\Services\IcsGenerator;
 use App\Services\InvoicePdf;
 use App\Services\SettingsService;
+use App\Services\Mailbox\FirmMailConfig;
 use App\Support\Tenancy\CurrentFirm;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -52,7 +53,15 @@ class TemplatedMail extends Mailable implements ShouldQueue
     /** @param  \Illuminate\Contracts\Mail\Factory|\Illuminate\Contracts\Mail\Mailer  $mailer */
     public function send($mailer)
     {
-        return $this->inFirm(fn () => parent::send($mailer));
+        return $this->inFirm(function () use ($mailer) {
+            // Cabinet doté de son propre serveur SMTP : l'e-mail part par celui-ci.
+            $mail = app(FirmMailConfig::class);
+            if ($this->firmId !== null && $mail->usesOwnSmtp()) {
+                $this->mailer($mail->registerMailer());
+            }
+
+            return parent::send($mailer);
+        });
     }
 
     /**
@@ -64,7 +73,7 @@ class TemplatedMail extends Mailable implements ShouldQueue
     {
         $log = $this->log();
         $settings = app(SettingsService::class);
-        $from = (string) config('mail.from.address');
+        $from = $this->firmId !== null ? app(FirmMailConfig::class)->fromAddress() : (string) config('mail.from.address');
         $replyTo = self::replyAddress();
 
         return new Envelope(
@@ -82,7 +91,7 @@ class TemplatedMail extends Mailable implements ShouldQueue
     {
         $firmEmail = (string) app(SettingsService::class)->get('firm.email');
 
-        return filter_var($firmEmail, FILTER_VALIDATE_EMAIL) ? $firmEmail : (string) config('mail.from.address');
+        return filter_var($firmEmail, FILTER_VALIDATE_EMAIL) ? $firmEmail : app(FirmMailConfig::class)->fromAddress();
     }
 
     /** Transport réellement utilisé, fixé par Laravel au moment de la mise en file. */

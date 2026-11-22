@@ -6,7 +6,9 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Support\Money;
 use App\Support\Tenancy\CurrentFirm;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -53,6 +55,24 @@ class SettingsService
         'reminders.hours_before' => ['type' => 'int', 'default' => 2, 'label' => 'Rappel avant le RDV (heures)'],
         'recap.time' => ['type' => 'string', 'default' => '07:00', 'label' => 'Heure du récapitulatif des avocats'],
 
+        // Messagerie du cabinet (phase M3). Sans configuration, la plateforme envoie pour le cabinet
+        // (son nom en expéditeur, son e-mail en adresse de réponse). Les mots de passe sont chiffrés.
+        'mail.smtp_enabled' => ['type' => 'bool', 'default' => false, 'label' => 'Envoi par le serveur SMTP du cabinet'],
+        'mail.smtp_host' => ['type' => 'string', 'default' => null, 'label' => 'Serveur SMTP'],
+        'mail.smtp_port' => ['type' => 'int', 'default' => 465, 'label' => 'Port SMTP'],
+        'mail.smtp_encryption' => ['type' => 'string', 'default' => 'ssl', 'label' => 'Chiffrement SMTP'],
+        'mail.smtp_username' => ['type' => 'string', 'default' => null, 'label' => 'Identifiant SMTP'],
+        'mail.smtp_password' => ['type' => 'secret', 'default' => null, 'label' => 'Mot de passe SMTP'],
+        'mail.from_address' => ['type' => 'string', 'default' => null, 'label' => 'Adresse d\'expédition'],
+        'mail.imap_enabled' => ['type' => 'bool', 'default' => false, 'label' => 'Lecture des réponses dans la boîte du cabinet'],
+        'mail.imap_host' => ['type' => 'string', 'default' => null, 'label' => 'Serveur IMAP'],
+        'mail.imap_port' => ['type' => 'int', 'default' => 993, 'label' => 'Port IMAP'],
+        'mail.imap_encryption' => ['type' => 'string', 'default' => 'ssl', 'label' => 'Chiffrement IMAP'],
+        'mail.imap_username' => ['type' => 'string', 'default' => null, 'label' => 'Identifiant IMAP'],
+        'mail.imap_password' => ['type' => 'secret', 'default' => null, 'label' => 'Mot de passe IMAP'],
+        'mail.imap_folders' => ['type' => 'string', 'default' => 'INBOX', 'label' => 'Dossiers relevés'],
+        'mail.imap_sent_folder' => ['type' => 'string', 'default' => 'Sent', 'label' => 'Dossier des messages envoyés'],
+
         // Heures d'ouverture (ADM-03)
         'office.opens_at' => ['type' => 'string', 'default' => '08:00', 'label' => 'Ouverture'],
         'office.closes_at' => ['type' => 'string', 'default' => '17:00', 'label' => 'Fermeture'],
@@ -62,26 +82,51 @@ class SettingsService
     public function get(string $key): mixed
     {
         $this->assertKnown($key);
+
+        // Secret : stocké et mis en cache chiffré, déchiffré seulement ici, à la demande.
+        if (self::DEFINITIONS[$key]['type'] === 'secret') {
+            return $this->decrypt($this->stored()[$key] ?? null);
+        }
+
         $all = $this->all();
 
         return array_key_exists($key, $all) ? $all[$key] : self::DEFINITIONS[$key]['default'];
     }
 
-    /** @return array<string, mixed> Tous les paramètres, valeurs par défaut comprises. */
+    /** Un secret est-il enregistré (sans le révéler) ? */
+    public function hasSecret(string $key): bool
+    {
+        return filled($this->get($key));
+    }
+
+    /**
+     * Tous les paramètres, valeurs par défaut comprises. Les secrets n'y figurent jamais
+     * (valeur nulle) : ce tableau est transmis aux vues, PDF et e-mails.
+     *
+     * @return array<string, mixed>
+     */
     public function all(): array
     {
-        $stored = Cache::remember($this->cacheKey(), config('lexcabinet.settings_cache_ttl'), function () {
+        $stored = $this->stored();
+
+        $values = [];
+        foreach (self::DEFINITIONS as $key => $definition) {
+            $values[$key] = $definition['type'] === 'secret'
+                ? null
+                : (array_key_exists($key, $stored) ? $stored[$key] : $definition['default']);
+        }
+
+        return $values;
+    }
+
+    /** @return array<string, mixed> valeurs enregistrées (secrets encore chiffrés), en cache par cabinet */
+    private function stored(): array
+    {
+        return Cache::remember($this->cacheKey(), config('lexcabinet.settings_cache_ttl'), function () {
             return Setting::query()->get(['key', 'value', 'type'])
                 ->mapWithKeys(fn (Setting $s) => [$s->key => $this->cast($s->value, $s->type)])
                 ->all();
         });
-
-        $values = [];
-        foreach (self::DEFINITIONS as $key => $definition) {
-            $values[$key] = array_key_exists($key, $stored) ? $stored[$key] : $definition['default'];
-        }
-
-        return $values;
     }
 
     /**
@@ -100,6 +145,22 @@ class SettingsService
 
             foreach ($values as $key => $value) {
                 $type = self::DEFINITIONS[$key]['type'];
+
+                if ($type === 'secret') {
+                    if ((string) $value === (string) $this->get($key)) {
+                        continue;
+                    }
+
+                    Setting::query()->updateOrCreate(
+                        ['key' => $key],
+                        ['value' => filled($value) ? Crypt::encryptString((string) $value) : null, 'type' => $type, 'updated_by' => $by?->id],
+                    );
+                    activity('settings')->causedBy($by)->withProperties(['key' => $key])   // jamais la valeur
+                        ->log('Paramètre modifié : '.self::DEFINITIONS[$key]['label']);
+
+                    continue;
+                }
+
                 $serialized = $this->serialize($value, $type);
                 $old = $this->serialize($current[$key], $type);
 
@@ -136,6 +197,19 @@ class SettingsService
     private function cacheKey(): string
     {
         return self::CACHE_KEY.'.'.(app(CurrentFirm::class)->id() ?? 'none');
+    }
+
+    private function decrypt(mixed $value): ?string
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString((string) $value);
+        } catch (DecryptException) {
+            return null;   // clé d'application changée : le secret doit être ressaisi
+        }
     }
 
     private function assertKnown(string $key): void

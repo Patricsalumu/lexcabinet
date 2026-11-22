@@ -35,9 +35,6 @@ class MailCheck extends Command
             $this->components->twoColumnDetail('Mot de passe', filled($smtp['password'] ?? null) ? 'renseigné' : '<fg=yellow>vide</>');
         }
         $this->components->twoColumnDetail('Expéditeur (MAIL_FROM_ADDRESS)', (string) config('mail.from.address'));
-        foreach (\App\Models\Firm::query()->active()->orderBy('id')->get() as $firm) {
-            $this->components->twoColumnDetail("Adresse de réponse · {$firm->name}", app(\App\Support\Tenancy\CurrentFirm::class)->run($firm, fn () => \App\Mail\TemplatedMail::replyAddress()));
-        }
         if ($mailer === 'smtp' && filled(config('mail.mailers.smtp.username')) && str_contains((string) config('mail.mailers.smtp.username'), '@')
             && strcasecmp((string) config('mail.mailers.smtp.username'), (string) config('mail.from.address')) !== 0) {
             $this->components->warn('MAIL_FROM_ADDRESS diffère du compte SMTP : de nombreux serveurs refusent alors l\'envoi (erreur 550).');
@@ -92,27 +89,46 @@ class MailCheck extends Command
         }
 
         $this->newLine();
-        $this->components->twoColumnDetail('<fg=cyan>Réponses (boîte IMAP)</>');
+        $this->components->twoColumnDetail('<fg=cyan>Boîte de réponses de la plateforme (IMAP_*)</>');
         $mailbox = app(\App\Services\Mailbox\ImapMailbox::class);
         if (! $mailbox->isConfigured()) {
             $this->components->twoColumnDetail('Boîte lue', '<fg=yellow>non configurée (IMAP_HOST, IMAP_USERNAME)</>');
         } else {
             $this->components->twoColumnDetail('Boîte lue', (string) config('imap.accounts.default.username').' sur '.config('imap.accounts.default.host'));
-            foreach (\App\Models\Firm::query()->active()->orderBy('id')->get() as $firm) {
-                $replyTo = app(\App\Support\Tenancy\CurrentFirm::class)->run($firm, fn () => \App\Mail\TemplatedMail::replyAddress());
-                if ($mailbox->address() && strcasecmp($mailbox->address(), $replyTo) !== 0) {
-                    $this->components->warn("{$firm->name} : ses clients répondent à {$replyTo}, une autre boîte que celle lue. Alignez l'e-mail du cabinet (Paramètres) et IMAP_USERNAME.");
-                    $problems++;
+            $problems += $this->checkMailbox($mailbox);
+            $this->components->twoColumnDetail('Dernière relève', \App\Services\ConversationService::lastFetchAt() ?? 'jamais');
+        }
+        $this->components->twoColumnDetail('Réponses importées (tous cabinets)', (string) \App\Models\EmailReply::query()->withoutGlobalScope(\App\Support\Tenancy\FirmScope::class)->count());
+
+        // Messagerie de chaque cabinet : envoi, adresse de réponse, boîte lue.
+        foreach (\App\Models\Firm::query()->active()->orderBy('id')->get() as $firm) {
+            $this->newLine();
+            $this->components->twoColumnDetail("<fg=cyan>Cabinet · {$firm->name}</>");
+            $problems += app(\App\Support\Tenancy\CurrentFirm::class)->run($firm, function () use ($firm) {
+                $mail = app(\App\Services\Mailbox\FirmMailConfig::class);
+                $issues = 0;
+                $this->components->twoColumnDetail('Envoi', $mail->smtpConfigured()
+                    ? 'SMTP du cabinet ('.app(\App\Services\SettingsService::class)->get('mail.smtp_host').')'.($mail->usesOwnSmtp() ? '' : ' <fg=yellow>non utilisé avec MAIL_MAILER='.config('mail.default').'</>')
+                    : 'plateforme, au nom du cabinet');
+                $this->components->twoColumnDetail('Expéditeur', $mail->fromAddress());
+                $replyTo = \App\Mail\TemplatedMail::replyAddress();
+                $this->components->twoColumnDetail('Les clients répondent à', $replyTo);
+
+                $box = $mail->replyMailbox();
+                $this->components->twoColumnDetail('Réponses relevées dans', $box->isConfigured()
+                    ? ($box->isFirmMailbox() ? 'boîte du cabinet ' : 'boîte de la plateforme ').($box->address() ?? '')
+                    : '<fg=yellow>aucune boîte configurée</>');
+                if ($box->isConfigured() && $box->address() && strcasecmp($box->address(), $replyTo) !== 0) {
+                    $this->components->warn("Les clients répondent à {$replyTo}, mais la boîte lue est {$box->address()} : alignez l'e-mail du cabinet et la boîte lue.");
+                    $issues++;
                 }
-            }
-            try {
-                $this->components->twoColumnDetail('Connexion', 'réussie ('.implode(', ', $mailbox->folders()).')');
-            } catch (Throwable $e) {
-                $this->components->error('Connexion IMAP impossible : '.$e->getMessage());
-                $problems++;
-            }
-            $this->components->twoColumnDetail('Dernière relève', (string) (\Illuminate\Support\Facades\Cache::get('lexcabinet.replies.last_fetch_at') ?? 'jamais'));
-            $this->components->twoColumnDetail('Réponses importées', (string) \App\Models\EmailReply::query()->withoutGlobalScope(\App\Support\Tenancy\FirmScope::class)->count());
+                if ($box->isFirmMailbox()) {
+                    $issues += $this->checkMailbox($box);
+                    $this->components->twoColumnDetail('Dernière relève', \App\Services\ConversationService::lastFetchAt($firm->id) ?? 'jamais');
+                }
+
+                return $issues;
+            });
         }
 
         if ($to = $this->option('send')) {
@@ -129,5 +145,18 @@ class MailCheck extends Command
         }
 
         return $problems === 0 ? self::SUCCESS : self::FAILURE;
+    }
+
+    private function checkMailbox(\App\Services\Mailbox\ImapMailbox $mailbox): int
+    {
+        try {
+            $this->components->twoColumnDetail('Connexion', 'réussie ('.implode(', ', $mailbox->folders()).')');
+
+            return 0;
+        } catch (Throwable $e) {
+            $this->components->error('Connexion IMAP impossible : '.$e->getMessage());
+
+            return 1;
+        }
     }
 }

@@ -7,6 +7,7 @@ use App\Enums\Module;
 use App\Mail\TemplatedMail;
 use App\Models\EmailLog;
 use App\Services\ConversationService;
+use App\Services\Mailbox\FirmMailConfig;
 use App\Services\Mailbox\ImapMailbox;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
@@ -66,7 +67,7 @@ class ConversationIndex extends Component
             : session()->flash('status', 'Réponse envoyée.');
     }
 
-    public function render(ConversationService $conversations, ImapMailbox $mailbox): View
+    public function render(ConversationService $conversations, FirmMailConfig $mail): View
     {
         $user = auth()->user();
 
@@ -88,7 +89,7 @@ class ConversationIndex extends Component
             'messages' => $current ? $conversations->messages($current) : collect(),
             'canReply' => $current && $conversations->canReply($user, $current),
             'replyTo' => $current ? $conversations->replyRecipient($current) : null,
-            'mailboxWarning' => $this->mailboxWarning($mailbox),
+            'mailboxWarning' => $this->mailboxWarning($mail->replyMailbox()),
         ]);
     }
 
@@ -116,13 +117,13 @@ class ConversationIndex extends Component
     private function mailboxWarning(ImapMailbox $mailbox): ?string
     {
         if (! $mailbox->isConfigured()) {
-            return 'La boîte de réception n\'est pas configurée (IMAP_HOST, IMAP_USERNAME dans .env) : les réponses ne sont pas relevées.';
+            return 'Aucune boîte de réception n\'est configurée (Paramètres → Messagerie) : les réponses ne sont pas relevées.';
         }
 
         $replyTo = TemplatedMail::replyAddress();
         $read = $mailbox->address();
         if ($read !== null && strcasecmp($read, $replyTo) !== 0) {
-            return "Les clients répondent à {$replyTo}, mais l'application lit la boîte {$read} : leurs réponses n'apparaîtront pas ici. Alignez l'e-mail du cabinet (Paramètres) et IMAP_USERNAME.";
+            return "Les clients répondent à {$replyTo}, mais l'application lit la boîte {$read} : leurs réponses n'apparaîtront pas ici. Alignez l'e-mail du cabinet (Paramètres → Cabinet) et la boîte lue (Paramètres → Messagerie).";
         }
 
         return null;

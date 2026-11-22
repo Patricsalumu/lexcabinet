@@ -12,6 +12,8 @@ use App\Models\EmailTemplate;
 use App\Models\Invoice;
 use App\Models\LegalCase;
 use App\Models\User;
+use App\Models\Firm;
+use App\Services\Mailbox\FirmMailConfig;
 use App\Services\Mailbox\ImapMailbox;
 use App\Services\Mailbox\InboundEmail;
 use App\Support\QuotedText;
@@ -44,36 +46,73 @@ class ConversationService
     // ------------------------------------------------------------------ Relève
 
     /**
-     * Relève la boîte et importe les nouvelles réponses. Renvoie le nombre de réponses importées,
-     * ou null si la boîte n'est pas configurée.
+     * Relève les boîtes et importe les nouvelles réponses : la boîte de la plateforme (réponses de
+     * tous les cabinets qui n'ont pas la leur), puis la boîte propre de chaque cabinet actif qui en a
+     * configuré une. Renvoie le nombre de réponses importées, ou null si aucune boîte n'est configurée.
+     * L'échec d'une boîte (mauvais mot de passe…) n'empêche pas la relève des autres.
      */
     public function fetch(): ?int
     {
-        if (! $this->mailbox->isConfigured()) {
-            return null;
+        $total = null;
+        $errors = [];
+
+        if ($this->mailbox->isConfigured()) {
+            $total = $this->fetchFrom($this->mailbox, self::LAST_FETCH_KEY, null);
         }
 
+        foreach (Firm::query()->active()->orderBy('id')->get() as $firm) {
+            $mailbox = app(CurrentFirm::class)->run($firm, fn () => app(FirmMailConfig::class)->ownMailbox());
+            if ($mailbox === null) {
+                continue;
+            }
+
+            try {
+                $total = ($total ?? 0) + $this->fetchFrom($mailbox, self::LAST_FETCH_KEY.'.firm.'.$firm->id, $firm->id);
+            } catch (\Throwable $e) {
+                $errors[] = "{$firm->name} : {$e->getMessage()}";
+                report($e);
+            }
+        }
+
+        if ($errors !== []) {
+            throw new \RuntimeException('Relève incomplète. '.implode(' ; ', $errors));
+        }
+
+        return $total;
+    }
+
+    /** Dernière relève d'une boîte (null : boîte de la plateforme). */
+    public static function lastFetchAt(?int $firmId = null): ?string
+    {
+        return Cache::get(self::LAST_FETCH_KEY.($firmId ? '.firm.'.$firmId : ''));
+    }
+
+    /**
+     * @param  int|null  $firmId  boîte propre à ce cabinet : seules ses réponses y sont importées
+     */
+    private function fetchFrom(ImapMailbox $mailbox, string $cacheKey, ?int $firmId): int
+    {
         $startedAt = now();
-        $last = Cache::get(self::LAST_FETCH_KEY);
+        $last = Cache::get($cacheKey);
         // IMAP SINCE est à la journée : on repart de la veille de la dernière relève (les doublons sont écartés).
         $since = $last ? Carbon::parse($last)->subDay()->startOfDay() : now()->subDays((int) config('lexcabinet.replies.initial_days', 14))->startOfDay();
 
-        $messages = $this->mailbox->fetchSince($since, fn (string $messageId, array $cited) => $this->isWanted($messageId, $cited));
+        $messages = $mailbox->fetchSince($since, fn (string $messageId, array $cited) => $this->isWanted($messageId, $cited, $firmId));
 
         $imported = 0;
         foreach ($messages as $message) {
-            if ($this->import($message)) {
+            if ($this->import($message, $firmId)) {
                 $imported++;
             }
         }
 
-        Cache::forever(self::LAST_FETCH_KEY, $startedAt->toIso8601String());
+        Cache::forever($cacheKey, $startedAt->toIso8601String());
 
         return $imported;
     }
 
     /** Message à télécharger : nouveau, et réponse à un e-mail de l'application. */
-    public function isWanted(string $messageId, array $cited): bool
+    public function isWanted(string $messageId, array $cited, ?int $firmId = null): bool
     {
         // La boîte est relevée hors de tout cabinet : recherche sur l'ensemble des cabinets.
         if (EmailReply::query()->withoutGlobalScope(FirmScope::class)->where('message_id', $messageId)->exists()
@@ -81,13 +120,16 @@ class ConversationService
             return false;
         }
 
-        return $this->answeredLog($cited) !== null;
+        $log = $this->answeredLog($cited);
+
+        // La boîte d'un cabinet ne peut alimenter que ce cabinet.
+        return $log !== null && ($firmId === null || $log->firm_id === $firmId);
     }
 
     /** Importe une réponse ; null si ce n'est pas une réponse à nos e-mails ou si elle est déjà connue. */
-    public function import(InboundEmail $mail): ?EmailReply
+    public function import(InboundEmail $mail, ?int $firmId = null): ?EmailReply
     {
-        if (! $this->isWanted($mail->messageId, $mail->citedIds())) {
+        if (! $this->isWanted($mail->messageId, $mail->citedIds(), $firmId)) {
             return null;
         }
 

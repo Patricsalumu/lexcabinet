@@ -132,3 +132,24 @@ Sinon Gmail vide la boîte et l'application ne voit plus les réponses.
 
 Seuls les e-mails envoyés après la mise en service de cette fonction peuvent être rattachés à une
 conversation (ils portent un identifiant que les réponses citent).
+
+## 8. Messagerie propre à chaque cabinet (multi-cabinet)
+
+Chaque cabinet peut configurer, dans **Paramètres → Messagerie** (administrateur du cabinet) :
+
+- **son serveur d'envoi (SMTP)** : ses e-mails partent alors de sa propre adresse. Sans configuration,
+  ils partent par le SMTP de la plateforme (`MAIL_*`), avec le nom du cabinet en expéditeur et
+  son e-mail en adresse de réponse ;
+- **sa boîte de réception (IMAP)** : les réponses de ses clients y sont relevées toutes les 5 minutes,
+  sans rien y changer. Sans configuration, elles sont relevées dans la boîte de la plateforme (`IMAP_*`).
+
+Les boutons « Envoyer un e-mail d'essai » et « Tester la connexion » vérifient la configuration sur
+place. Les mots de passe sont chiffrés avec la clé de l'application (`APP_KEY`) et jamais réaffichés :
+si `APP_KEY` change (ou lors d'un passage sur un autre serveur), ils doivent être ressaisis.
+
+Pour que les réponses apparaissent dans l'application, **l'e-mail du cabinet** (Paramètres → Cabinet)
+et **la boîte lue** doivent être la même adresse. `php artisan lexcabinet:mail-check` le vérifie pour
+chaque cabinet.
+
+Avec `MAIL_MAILER=log` (poste de développement), le SMTP des cabinets n'est pas utilisé pour les
+e-mails automatiques ; seul le bouton d'essai l'utilise.

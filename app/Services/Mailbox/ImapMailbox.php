@@ -16,15 +16,31 @@ use Webklex\PHPIMAP\Message;
  */
 class ImapMailbox
 {
+    /**
+     * @param  array<string, mixed>|null  $account  compte d'un cabinet (FirmMailConfig::imapAccount) ;
+     *                                              null pour la boîte de la plateforme (variables IMAP_*)
+     */
+    public function __construct(private readonly ?array $account = null) {}
+
+    /** Boîte propre à un cabinet (sinon : boîte de la plateforme). */
+    public function isFirmMailbox(): bool
+    {
+        return $this->account !== null;
+    }
+
     public function isConfigured(): bool
     {
+        if ($this->account !== null) {
+            return filled($this->account['host'] ?? null) && filled($this->account['username'] ?? null);
+        }
+
         return filled(config('imap.accounts.default.host')) && filled(config('imap.accounts.default.username'));
     }
 
     /** Adresse de la boîte lue (identifiant IMAP), si c'est une adresse e-mail. */
     public function address(): ?string
     {
-        $username = (string) config('imap.accounts.default.username');
+        $username = (string) ($this->account['username'] ?? config('imap.accounts.default.username'));
 
         return filter_var($username, FILTER_VALIDATE_EMAIL) ? $username : null;
     }
@@ -42,7 +58,7 @@ class ImapMailbox
         $found = [];
 
         try {
-            foreach (config('lexcabinet.replies.folders', ['INBOX']) as $path) {
+            foreach ($this->account['folders'] ?? config('lexcabinet.replies.folders', ['INBOX']) as $path) {
                 $folder = $client->getFolderByPath($path);
                 if ($folder === null) {
                     continue;
@@ -71,7 +87,7 @@ class ImapMailbox
     /** Dépose une copie (déjà lue) d'un message envoyé dans le dossier « Envoyés ». */
     public function appendToSent(string $rawMessage): void
     {
-        $sent = (string) config('lexcabinet.replies.sent_folder');
+        $sent = (string) ($this->account['sent_folder'] ?? config('lexcabinet.replies.sent_folder'));
         if ($sent === '') {
             return;
         }
@@ -97,6 +113,12 @@ class ImapMailbox
 
     protected function connect(): Client
     {
+        if ($this->account !== null) {
+            $account = array_diff_key($this->account, array_flip(['folders', 'sent_folder']));
+
+            return ImapClient::make(array_merge((array) config('imap.accounts.default'), $account))->connect();
+        }
+
         return ImapClient::account('default')->connect();
     }
 

@@ -4,6 +4,7 @@
         ['settings.users', 'Utilisateurs et rôles', 'users.manage'],
         ['settings.rates', 'Taux de change', 'rates.manage'],
         ['settings.treasury', 'Moyens de paiement', 'settings.manage'],
+        ['settings.mail', 'Messagerie', 'settings.manage'],
         ['settings.audit', 'Journal d\'audit', 'audit.view'],
     ];
 @endphp
