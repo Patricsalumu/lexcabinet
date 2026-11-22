@@ -225,7 +225,7 @@ class EmailService
      * Confidentialité des relances : un e-mail sur un dossier ne repart pas vers un avocat
      * qui n'y est plus associé, ni vers un ancien administrateur.
      */
-    private function confidentialityReason(EmailLog $log, Client|User $recipient): ?string
+    public function confidentialityReason(EmailLog $log, Client|User $recipient): ?string
     {
         if ($recipient instanceof User && in_array($log->template_key, EmailTemplate::APPOINTMENT_LAWYER_TEMPLATES, true)) {
             $appointment = Appointment::query()->find($log->related_id);

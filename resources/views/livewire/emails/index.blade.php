@@ -75,9 +75,24 @@
                         @foreach ($current->attachmentNames() as $name)<span class="lx-badge bg-slate-100 text-slate-700">{{ $name }}</span> @endforeach
                     </p>
                 @endif
-                @if ($canSend && $current->status->canResend())
-                    <button type="button" wire:click="resend({{ $current->id }})" class="lx-btn mt-4">Relancer l'envoi</button>
-                @endif
+                <div class="mt-4 flex flex-wrap items-center gap-2">
+                    @if ($canSend && $current->status->canResend())
+                        <button type="button" wire:click="resend({{ $current->id }})" class="lx-btn">Relancer l'envoi</button>
+                    @endif
+                    @if ($canSend)
+                        @if ($whatsApp['url'])
+                            <a href="{{ $whatsApp['url'] }}" target="_blank" rel="noopener noreferrer"
+                               wire:click="sharedOnWhatsApp({{ $current->id }})"
+                               class="lx-btn inline-flex items-center gap-2 !bg-[#25D366] !text-white hover:!bg-[#1ebe5b]">
+                                <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 fill-current"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2c0 1.3.9 2.5 1.1 2.7.1.2 1.8 2.8 4.4 3.9 1.6.7 2.3.8 3.1.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z"/></svg>
+                                Partager sur WhatsApp
+                            </a>
+                            <span class="text-xs text-slate-500">vers le {{ $current->recipient?->phone }}</span>
+                        @else
+                            <span class="text-xs text-slate-500">WhatsApp indisponible : {{ $whatsApp['reason'] }}</span>
+                        @endif
+                    @endif
+                </div>
             @else
                 <p class="text-sm text-slate-500">Aucun e-mail sélectionné.</p>
             @endif

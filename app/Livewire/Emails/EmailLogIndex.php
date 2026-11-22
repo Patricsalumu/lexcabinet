@@ -8,6 +8,7 @@ use App\Models\EmailLog;
 use App\Models\EmailTemplate;
 use App\Services\EmailService;
 use App\Services\ReminderService;
+use App\Services\WhatsAppShare;
 use Illuminate\Contracts\View\View;
 use InvalidArgumentException;
 use Livewire\Attributes\Layout;
@@ -72,6 +73,23 @@ class EmailLogIndex extends Component
             : session()->flash('status', 'E-mail remis en file d\'attente.');
     }
 
+    /** Trace le partage WhatsApp ; le lien lui-même s'ouvre dans un nouvel onglet. */
+    public function sharedOnWhatsApp(int $id, WhatsAppShare $whatsApp): void
+    {
+        $this->authorize(Permission::RemindersSend->value);
+        $log = EmailLog::query()->findOrFail($id);
+
+        if ($reason = $whatsApp->refusalReason($log)) {
+            session()->flash('error', 'Partage impossible : '.$reason);
+
+            return;
+        }
+
+        activity('emails')->causedBy(auth()->user())->performedOn($log)
+            ->withProperties(['phone' => $whatsApp->phone($log->recipient)])
+            ->log('E-mail partagé sur WhatsApp');
+    }
+
     public function sendRecap(ReminderService $reminders): void
     {
         $this->authorize(Permission::RemindersSend->value);
@@ -101,6 +119,10 @@ class EmailLogIndex extends Component
             'templates' => EmailTemplate::query()->orderBy('name')->pluck('name', 'key'),
             'counts' => EmailLog::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
             'canSend' => auth()->user()->can(Permission::RemindersSend->value),
+            'whatsApp' => $current ? [
+                'url' => app(WhatsAppShare::class)->url($current),
+                'reason' => app(WhatsAppShare::class)->refusalReason($current),
+            ] : null,
         ]);
     }
 }
